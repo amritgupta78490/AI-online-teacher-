@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Modern 3D Character Viewer</title>
+    <title>Modern 3D AI Teacher Stream</title>
     <style>
         /* ==========================================
-           CSS STYLES
+           GLOBAL & LAYOUT STYLES
            ========================================== */
         * {
             margin: 0;
@@ -15,46 +15,249 @@
         }
 
         body {
+            background-color: #0A0A0C; /* Premium ultra-dark background */
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #FFFFFF;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* App container to center the player on desktop layouts */
+        .app-container {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        /* ==========================================
+           CINEMATIC 16:9 VIDEO PLAYER CONTAINER
+           ========================================== */
+        .video-player-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background-color: #0F0F12; /* Cinematic soft dark canvas background */
+            border-radius: 16px;
             overflow: hidden;
-            background-color: #FAFAFA; /* Clean white/off-white background */
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 
+                        0 0 40px rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         #canvas-container {
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             display: block;
         }
 
-        /* Loading Screen */
-        #loader {
-            position: fixed;
-            top: 0;
-            left: 0;
+        /* ==========================================
+           RESPONSIVE & ORIENTATION HANDLING
+           ========================================== */
+        /* Immersive True Fullscreen Handling via Native API */
+        .video-player-container:fullscreen {
             width: 100vw;
             height: 100vh;
-            background-color: #FAFAFA;
+            max-width: none;
+            aspect-ratio: auto;
+            border-radius: 0;
+            border: none;
+        }
+
+        /* Mobile Landscape Auto-Fill CSS fallback */
+        @media (max-width: 920px) and (orientation: landscape) {
+            body {
+                padding: 0;
+            }
+            .app-container {
+                max-width: none;
+                gap: 0;
+            }
+            .video-player-container {
+                width: 100vw;
+                height: 100vh;
+                max-width: none;
+                aspect-ratio: auto;
+                border-radius: 0;
+                border: none;
+            }
+        }
+
+        /* ==========================================
+           STREAM INTERFACE OVERLAYS
+           ========================================== */
+        
+        /* Top Overlay: Title & Live Badge */
+        .video-overlay-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .live-badge {
+            background: #FF0033;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 0 15px rgba(255, 0, 51, 0.5);
+            pointer-events: auto;
+        }
+
+        .pulse-dot {
+            width: 6px;
+            height: 6px;
+            background-color: #fff;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(0.8); opacity: 0.5; }
+        }
+
+        .stream-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            max-width: 70%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Bottom Controls Bar */
+        .video-controls-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 15px 25px;
+            background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            opacity: 0.9;
+            transition: opacity 0.3s ease;
+        }
+
+        .video-player-container:hover .video-controls-bar {
+            opacity: 1;
+        }
+
+        .controls-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .video-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s ease;
+            color: #E5E5E5;
+        }
+
+        .video-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #FFF;
+            transform: translateY(-1px);
+        }
+
+        .video-btn:active {
+            transform: translateY(1px);
+        }
+
+        .video-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        /* Active styling toggles */
+        .video-btn.active {
+            background-color: #007AFF;
+            border-color: #007AFF;
+            color: #FFF;
+            box-shadow: 0 0 12px rgba(0, 122, 255, 0.4);
+        }
+
+        /* Dedicated Mic UI Accent */
+        .mic-btn {
+            background-color: rgba(255, 59, 48, 0.15);
+            border-color: rgba(255, 59, 48, 0.3);
+            color: #FF3B30;
+            width: 44px;
+            height: 44px;
+        }
+
+        .mic-btn.active {
+            background-color: #34C759;
+            border-color: #34C759;
+            color: #FFF;
+            box-shadow: 0 0 15px rgba(52, 199, 89, 0.4);
+        }
+
+        /* Embedded Loader Layout */
+        #loader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0F0F12;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 9999;
+            z-index: 99;
             transition: opacity 0.5s ease;
         }
 
         .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #E0E0E0;
-            border-top: 4px solid #333333;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #007AFF;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .loading-text {
-            color: #555;
-            font-size: 14px;
+            color: #8E8E93;
+            font-size: 12px;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
@@ -62,55 +265,6 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-
-        /* Floating UI Controls */
-        #ui-controls {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 15px;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 10px 20px;
-            border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            z-index: 100;
-            backdrop-filter: blur(5px);
-        }
-
-        .btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: background-color 0.2s, transform 0.1s;
-            color: #333;
-        }
-
-        .btn:hover {
-            background-color: #f0f0f0;
-        }
-
-        .btn:active {
-            transform: scale(0.95);
-        }
-
-        .btn svg {
-            width: 20px;
-            height: 20px;
-            fill: currentColor;
-        }
-
-        .btn.active {
-            background-color: #e0e0e0;
-            color: #000;
         }
     </style>
 
@@ -125,23 +279,48 @@
 </head>
 <body>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <div class="loading-text">Loading Model...</div>
-    </div>
+    <div class="app-container">
+        
+        <div id="video-player" class="video-player-container">
+            
+            <div id="loader">
+                <div class="spinner"></div>
+                <div class="loading-text">Connecting to Teacher Stream...</div>
+            </div>
 
-    <div id="canvas-container"></div>
+            <div class="video-overlay-top">
+                <div class="live-badge">
+                    <span class="pulse-dot"></span>LIVE
+                </div>
+                <div class="stream-title">AI Virtual Classroom: Interactive Lecture Session</div>
+            </div>
 
-    <div id="ui-controls">
-        <button class="btn" id="btn-reset" title="Reset Camera">
-            <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
-        </button>
-        <button class="btn" id="btn-rotate" title="Toggle Auto-Rotate">
-            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" opacity="0"/><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5s2.24-5 5-5v3l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.44-2.43l1.41 1.41c.91-1.16 1.46-2.51 1.63-3.9h-2.02c-.14.87-.48 1.72-1.02 2.49z"/></svg>
-        </button>
-        <button class="btn" id="btn-fullscreen" title="Fullscreen">
-            <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-        </button>
+            <div id="canvas-container"></div>
+
+            <div class="video-controls-bar">
+                <div class="controls-group">
+                    <button class="video-btn" id="btn-rotate" title="Toggle Auto-Orbit Rotation">
+                        <svg viewBox="0 0 24 24"><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5s2.24-5 5-5v3l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.44-2.43l1.41 1.41c.91-1.16 1.46-2.51 1.63-3.9h-2.02c-.14.87-.48 1.72-1.02 2.49z"/></svg>
+                    </button>
+                    <button class="video-btn" id="btn-reset" title="Reset Camera View">
+                        <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                    </button>
+                </div>
+
+                <div class="controls-group">
+                    <button class="video-btn mic-btn" id="btn-mic" title="Toggle AI Microphone Audio Input">
+                        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
+                    </button>
+                </div>
+
+                <div class="controls-group">
+                    <button class="video-btn" id="btn-fullscreen" title="Toggle Viewport Fullscreen Mode">
+                        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script type="module">
@@ -149,82 +328,80 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        // Variables
+        // Contextual Element Binding
         let scene, camera, renderer, controls, mixer, clock;
+        const playerContainer = document.getElementById('video-player');
         const container = document.getElementById('canvas-container');
-        const defaultCameraPos = new THREE.Vector3(0, 1.5, 4); // Cinematic angle
+        const defaultCameraPos = new THREE.Vector3(0, 1.3, 3.5);
 
         init();
         animate();
 
         function init() {
-            // 1. Setup Scene
+            // 1. Setup Scene Architecture with Dark Cinematic Tone
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xFAFAFA);
+            scene.background = new THREE.Color(0x0F0F12); // Synchronized to container background
 
             clock = new THREE.Clock();
 
-            // 2. Setup Camera
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            // 2. Setup Aspect-Bound Frame Camera
+            camera = new THREE.PerspectiveCamera(40, playerContainer.clientWidth / playerContainer.clientHeight, 0.1, 100);
             camera.position.copy(defaultCameraPos);
 
-            // 3. Setup Renderer
+            // 3. Setup Scaled Viewport Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Optimize for mobile
+            renderer.setSize(playerContainer.clientWidth, playerContainer.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.outputColorSpace = THREE.SRGBColorSpace; // Correct colors
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
             container.appendChild(renderer.domElement);
 
-            // 4. Lighting (Professional Soft Setup)
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+            // 4. Lighting Engine (Professional Live Studio Preset Setup)
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-            dirLight.position.set(5, 5, 5);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.6);
+            dirLight.position.set(3, 4, 4);
             dirLight.castShadow = true;
             dirLight.shadow.camera.top = 2;
-            dirLight.shadow.camera.bottom = - 2;
-            dirLight.shadow.camera.left = - 2;
+            dirLight.shadow.camera.bottom = -2;
+            dirLight.shadow.camera.left = -2;
             dirLight.shadow.camera.right = 2;
-            dirLight.shadow.camera.near = 0.1;
-            dirLight.shadow.camera.far = 40;
             dirLight.shadow.bias = -0.001;
-            dirLight.shadow.mapSize.width = 1024; // Shadow resolution
-            dirLight.shadow.mapSize.height = 1024;
+            dirLight.shadow.mapSize.width = 2048; // High resolution profile shadows
+            dirLight.shadow.mapSize.height = 2048;
             scene.add(dirLight);
 
-            // Soft Fill Light
-            const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
-            fillLight.position.set(-5, 0, -5);
-            scene.add(fillLight);
+            // Studio Rim Fill Light
+            const rimLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            rimLight.position.set(-4, 2, -3);
+            scene.add(rimLight);
 
-            // Invisible plane to catch shadows
-            const planeGeometry = new THREE.PlaneGeometry(100, 100);
-            const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.05 }); // Soft shadow opacity
+            // Soft floor backdrop shadow catcher
+            const planeGeometry = new THREE.PlaneGeometry(50, 50);
+            const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.15 });
             const plane = new THREE.Mesh(planeGeometry, planeMaterial);
             plane.rotation.x = -Math.PI / 2;
-            plane.position.y = 0; // Will be adjusted after model loads
+            plane.position.y = 0;
             plane.receiveShadow = true;
             scene.add(plane);
 
-            // 5. Controls
+            // 5. Orbit Constraints Interface Setup
             controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true; // Smooth movement
+            controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.minDistance = 1; // Zoom limits
-            controls.maxDistance = 10;
-            controls.target.set(0, 1, 0); // Look at center
+            controls.minDistance = 1.5;
+            controls.maxDistance = 7;
+            controls.target.set(0, 0.9, 0); // Focus explicitly target frame tracking centered on character chest/head
 
-            // 6. Load Model
+            // 6. Native Model Asset Stream Loading Integration Pipeline
             const loader = new GLTFLoader();
             
-            // IMPORTANT: Make sure teacher.glb is in the same folder as this HTML file!
+            // Adjust path reference context to 'teacher.glb' location structure context
             loader.load('teacher.glb', function (gltf) {
                 const model = gltf.scene;
 
-                // Enable shadows for all meshes in the model
                 model.traverse((node) => {
                     if (node.isMesh) {
                         node.castShadow = true;
@@ -232,70 +409,76 @@
                     }
                 });
 
-                // Auto-center and Auto-scale the model
+                // Auto-Boundary Centering Computations
                 const box = new THREE.Box3().setFromObject(model);
-                const center = box.getCenter(new THREE.Vector3());
                 const size = box.getSize(new THREE.Vector3());
                 
-                // Scale model to a standard height (e.g., 2 units)
+                // Normalizes structure object scale dynamically down to safe engine metrics
                 const maxDim = Math.max(size.x, size.y, size.z);
-                const scale = 2.0 / maxDim;
+                const scale = 1.8 / maxDim;
                 model.scale.set(scale, scale, scale);
 
-                // Recalculate box after scaling to center exactly
                 const scaledBox = new THREE.Box3().setFromObject(model);
                 const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+                
                 model.position.x += (model.position.x - scaledCenter.x);
-                model.position.y += (model.position.y - scaledBox.min.y); // Set feet on floor (Y=0)
+                model.position.y += (model.position.y - scaledBox.min.y); // Grounds feet baseline precisely to floor level Y=0
                 model.position.z += (model.position.z - scaledCenter.z);
 
                 scene.add(model);
 
-                // Play Animations if they exist
                 if (gltf.animations && gltf.animations.length > 0) {
                     mixer = new THREE.AnimationMixer(model);
-                    const action = mixer.clipAction(gltf.animations[0]); // Play first animation
+                    const action = mixer.clipAction(gltf.animations[0]);
                     action.play();
                 }
 
-                // Hide loader
+                // Smoothly dismiss integrated frame loader UI UI elements
                 document.getElementById('loader').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('loader').style.display = 'none';
                 }, 500);
 
             }, undefined, function (error) {
-                console.error('Error loading the model:', error);
-                document.querySelector('.loading-text').innerText = 'Error Loading Model. Check console.';
+                console.error('Critical execution exception encountered inside Model Loader Asset runtime:', error);
+                document.querySelector('.loading-text').innerText = 'Stream connection loss. Verify file asset assets.';
                 document.querySelector('.spinner').style.display = 'none';
             });
 
-            // 7. Event Listeners
-            window.addEventListener('resize', onWindowResize);
-            setupUI();
+            // 7. Event Binding Registration Core Execution Rules
+            window.addEventListener('resize', onViewportResize);
+            document.addEventListener('fullscreenchange', onViewportResize);
+            setupUIEventHandlers();
         }
 
-        function setupUI() {
-            // Reset Button
+        function setupUIEventHandlers() {
+            // View Reset Action Handlers
             document.getElementById('btn-reset').addEventListener('click', () => {
                 camera.position.copy(defaultCameraPos);
-                controls.target.set(0, 1, 0);
+                controls.target.set(0, 0.9, 0);
                 controls.update();
             });
 
-            // Auto Rotate Toggle
+            // Auto-Rotate Stream Configuration Mode Switches
             const btnRotate = document.getElementById('btn-rotate');
             btnRotate.addEventListener('click', () => {
                 controls.autoRotate = !controls.autoRotate;
-                controls.autoRotateSpeed = 2.0;
+                controls.autoRotateSpeed = 1.5;
                 btnRotate.classList.toggle('active');
             });
 
-            // Fullscreen Toggle
+            // Interactive Microphones Action Interface Switches
+            const btnMic = document.getElementById('btn-mic');
+            btnMic.addEventListener('click', () => {
+                btnMic.classList.toggle('active');
+            });
+
+            // Fullscreen Application Presentation Integration
             document.getElementById('btn-fullscreen').addEventListener('click', () => {
                 if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(err => {
-                        console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                    // Targets the complete composite player framework context wrapper, ensuring UI layout panels match screen context changes seamlessly
+                    playerContainer.requestFullscreen().catch(err => {
+                        console.error(`Error attempting to execute immersive engine layout standard rules initialization: ${err.message}`);
                     });
                 } else {
                     document.exitFullscreen();
@@ -303,22 +486,24 @@
             });
         }
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
+        // Calculates dynamic viewport container boundary aspect matrices correctly
+        function onViewportResize() {
+            const width = playerContainer.clientWidth;
+            const height = playerContainer.clientHeight;
+            
+            camera.aspect = width / height;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            renderer.setSize(width, height);
         }
 
         function animate() {
             requestAnimationFrame(animate);
 
-            // Update animation mixer
             const delta = clock.getDelta();
             if (mixer) mixer.update(delta);
 
-            // Update controls (required for damping and auto-rotate)
             controls.update();
-
             renderer.render(scene, camera);
         }
     </script>
