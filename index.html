@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Modern 3D Character Viewer</title>
+    <style>
+        /* ==========================================
+           CSS STYLES
+           ========================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background-color: #FAFAFA; /* Clean white/off-white background */
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* Loading Screen */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #FAFAFA;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #E0E0E0;
+            border-top: 4px solid #333333;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        .loading-text {
+            color: #555;
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Floating UI Controls */
+        #ui-controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.2s, transform 0.1s;
+            color: #333;
+        }
+
+        .btn:hover {
+            background-color: #f0f0f0;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .btn.active {
+            background-color: #e0e0e0;
+            color: #000;
+        }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Model...</div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-controls">
+        <button class="btn" id="btn-reset" title="Reset Camera">
+            <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+        </button>
+        <button class="btn" id="btn-rotate" title="Toggle Auto-Rotate">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" opacity="0"/><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5s2.24-5 5-5v3l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.44-2.43l1.41 1.41c.91-1.16 1.46-2.51 1.63-3.9h-2.02c-.14.87-.48 1.72-1.02 2.49z"/></svg>
+        </button>
+        <button class="btn" id="btn-fullscreen" title="Fullscreen">
+            <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+        </button>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // Variables
+        let scene, camera, renderer, controls, mixer, clock;
+        const container = document.getElementById('canvas-container');
+        const defaultCameraPos = new THREE.Vector3(0, 1.5, 4); // Cinematic angle
+
+        init();
+        animate();
+
+        function init() {
+            // 1. Setup Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xFAFAFA);
+
+            clock = new THREE.Clock();
+
+            // 2. Setup Camera
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.copy(defaultCameraPos);
+
+            // 3. Setup Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Optimize for mobile
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputColorSpace = THREE.SRGBColorSpace; // Correct colors
+            container.appendChild(renderer.domElement);
+
+            // 4. Lighting (Professional Soft Setup)
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            dirLight.position.set(5, 5, 5);
+            dirLight.castShadow = true;
+            dirLight.shadow.camera.top = 2;
+            dirLight.shadow.camera.bottom = - 2;
+            dirLight.shadow.camera.left = - 2;
+            dirLight.shadow.camera.right = 2;
+            dirLight.shadow.camera.near = 0.1;
+            dirLight.shadow.camera.far = 40;
+            dirLight.shadow.bias = -0.001;
+            dirLight.shadow.mapSize.width = 1024; // Shadow resolution
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+
+            // Soft Fill Light
+            const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            fillLight.position.set(-5, 0, -5);
+            scene.add(fillLight);
+
+            // Invisible plane to catch shadows
+            const planeGeometry = new THREE.PlaneGeometry(100, 100);
+            const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.05 }); // Soft shadow opacity
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.rotation.x = -Math.PI / 2;
+            plane.position.y = 0; // Will be adjusted after model loads
+            plane.receiveShadow = true;
+            scene.add(plane);
+
+            // 5. Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; // Smooth movement
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 1; // Zoom limits
+            controls.maxDistance = 10;
+            controls.target.set(0, 1, 0); // Look at center
+
+            // 6. Load Model
+            const loader = new GLTFLoader();
+            
+            // IMPORTANT: Make sure teacher.glb is in the same folder as this HTML file!
+            loader.load('teacher.glb', function (gltf) {
+                const model = gltf.scene;
+
+                // Enable shadows for all meshes in the model
+                model.traverse((node) => {
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+                    }
+                });
+
+                // Auto-center and Auto-scale the model
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                
+                // Scale model to a standard height (e.g., 2 units)
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scale = 2.0 / maxDim;
+                model.scale.set(scale, scale, scale);
+
+                // Recalculate box after scaling to center exactly
+                const scaledBox = new THREE.Box3().setFromObject(model);
+                const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+                model.position.x += (model.position.x - scaledCenter.x);
+                model.position.y += (model.position.y - scaledBox.min.y); // Set feet on floor (Y=0)
+                model.position.z += (model.position.z - scaledCenter.z);
+
+                scene.add(model);
+
+                // Play Animations if they exist
+                if (gltf.animations && gltf.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(model);
+                    const action = mixer.clipAction(gltf.animations[0]); // Play first animation
+                    action.play();
+                }
+
+                // Hide loader
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loader').style.display = 'none';
+                }, 500);
+
+            }, undefined, function (error) {
+                console.error('Error loading the model:', error);
+                document.querySelector('.loading-text').innerText = 'Error Loading Model. Check console.';
+                document.querySelector('.spinner').style.display = 'none';
+            });
+
+            // 7. Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            setupUI();
+        }
+
+        function setupUI() {
+            // Reset Button
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                camera.position.copy(defaultCameraPos);
+                controls.target.set(0, 1, 0);
+                controls.update();
+            });
+
+            // Auto Rotate Toggle
+            const btnRotate = document.getElementById('btn-rotate');
+            btnRotate.addEventListener('click', () => {
+                controls.autoRotate = !controls.autoRotate;
+                controls.autoRotateSpeed = 2.0;
+                btnRotate.classList.toggle('active');
+            });
+
+            // Fullscreen Toggle
+            document.getElementById('btn-fullscreen').addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update animation mixer
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+
+            // Update controls (required for damping and auto-rotate)
+            controls.update();
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
