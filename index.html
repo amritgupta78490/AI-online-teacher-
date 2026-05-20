@@ -1,11 +1,10 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI Teacher - Virtual Classroom</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
         /* ==========================================
@@ -23,7 +22,7 @@
             --border-radius-lg: 28px;
             --border-radius-md: 16px;
             --border-radius-sm: 12px;
-            --transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            --transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         * {
@@ -37,8 +36,8 @@
         body {
             background-color: var(--bg-color);
             background-image: 
-                radial-gradient(circle at 15% 50%, rgba(0, 102, 204, 0.05), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(0, 204, 255, 0.05), transparent 25%);
+                radial-gradient(circle at 15% 50%, rgba(0, 102, 204, 0.06), transparent 35%),
+                radial-gradient(circle at 85% 30%, rgba(0, 204, 255, 0.06), transparent 35%);
             color: var(--text-main);
             min-height: 100vh;
             display: flex;
@@ -49,10 +48,98 @@
         /* Glassmorphism utility */
         .glass {
             background: var(--surface-color);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+        }
+
+        /* ==========================================
+           MODAL (API KEY)
+           ========================================== */
+        #api-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(247, 247, 249, 0.4);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.4s ease, visibility 0.4s;
+        }
+
+        #api-modal-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .modal-card {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #fff;
+            padding: 40px 32px;
+            border-radius: 32px;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.08);
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            transform: translateY(0) scale(1);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #api-modal-overlay.hidden .modal-card {
+            transform: translateY(30px) scale(0.95);
+        }
+
+        .modal-card h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .modal-card p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .modal-card input {
+            width: 100%;
+            padding: 16px 20px;
+            border-radius: var(--border-radius-md);
+            border: 1px solid rgba(0,0,0,0.1);
+            background: #F7F7F9;
+            font-size: 15px;
+            outline: none;
+            margin-bottom: 24px;
+            transition: var(--transition);
+        }
+
+        .modal-card input:focus {
+            border-color: var(--accent-color);
+            background: #fff;
+            box-shadow: 0 0 0 4px var(--accent-glow);
+        }
+
+        .modal-card button {
+            width: 100%;
+            padding: 16px;
+            border-radius: var(--border-radius-md);
+            background: var(--accent-color);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-card button:hover {
+            background: #0055b3;
+            transform: translateY(-2px);
         }
 
         /* ==========================================
@@ -62,11 +149,11 @@
             display: flex;
             flex-direction: column;
             width: 100%;
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 0 auto;
             padding: 20px;
             min-height: 100vh;
-            gap: 24px;
+            gap: 20px;
         }
 
         /* Top Header */
@@ -79,31 +166,18 @@
             z-index: 10;
         }
 
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
 
         .live-badge {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255, 59, 48, 0.1);
-            color: var(--danger);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
+            display: flex; align-items: center; gap: 6px;
+            background: rgba(255, 59, 48, 0.1); color: var(--danger);
+            padding: 4px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
             text-transform: uppercase;
         }
 
         .live-dot {
-            width: 6px;
-            height: 6px;
-            background: var(--danger);
-            border-radius: 50%;
+            width: 6px; height: 6px; background: var(--danger); border-radius: 50%;
             animation: pulse 2s infinite;
         }
 
@@ -113,253 +187,240 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
         }
 
-        .teacher-info h1 {
-            font-size: 16px;
-            font-weight: 600;
-        }
+        .teacher-info h1 { font-size: 18px; font-weight: 600; }
+        .teacher-info p { font-size: 13px; color: var(--text-muted); }
 
-        .teacher-info p {
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        
+        .mode-indicator {
             font-size: 12px;
-            color: var(--text-muted);
-        }
-
-        /* ==========================================
-           16:9 VIDEO CONTAINER (NO BUTTONS INSIDE)
-           ========================================== */
-        .video-section {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .canvas-wrapper {
-            position: relative;
-            width: 100%;
-            max-width: 1000px; /* Limits size on large screens */
-            aspect-ratio: 16 / 9; /* Strictly 16:9 */
-            border-radius: var(--border-radius-lg);
-            overflow: hidden;
-            background: linear-gradient(135deg, #ffffff 0%, #f0f0f5 100%);
-            box-shadow: 
-                0 0 0 1px rgba(255, 255, 255, 0.8),
-                0 20px 40px rgba(0, 0, 0, 0.06),
-                0 0 60px var(--accent-glow);
+            font-weight: 600;
+            color: var(--accent-color);
+            background: var(--accent-glow);
+            padding: 6px 12px;
+            border-radius: 12px;
             transition: var(--transition);
         }
 
-        /* Fullscreen handling */
-        .canvas-wrapper:fullscreen {
-            border-radius: 0;
-            max-width: 100%;
+        /* ==========================================
+           16:9 VIDEO CONTAINER & LESSON PANEL
+           ========================================== */
+        .video-section {
+            width: 100%; display: flex; justify-content: center; align-items: center;
         }
+
+        .canvas-wrapper {
+            position: relative; width: 100%; max-width: 1100px;
+            aspect-ratio: 16 / 9;
+            border-radius: var(--border-radius-lg);
+            overflow: hidden;
+            background: linear-gradient(135deg, #ffffff 0%, #f0f0f5 100%);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 24px 48px rgba(0, 0, 0, 0.05);
+            transition: var(--transition);
+        }
+
+        .canvas-wrapper:fullscreen { border-radius: 0; max-width: 100%; }
         
-        #canvas-container {
-            width: 100%;
-            height: 100%;
-            display: block;
-            cursor: grab;
-        }
-        
-        #canvas-container:active {
-            cursor: grabbing;
-        }
+        #canvas-container { width: 100%; height: 100%; display: block; cursor: grab; }
+        #canvas-container:active { cursor: grabbing; }
 
         /* Loading Screen inside canvas */
         #loader {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255,255,255,0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.95); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 20;
             transition: opacity 0.5s ease;
         }
 
         .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #eee;
-            border-top: 3px solid var(--accent-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 16px;
+            width: 44px; height: 44px;
+            border: 4px solid #f0f0f5; border-top: 4px solid var(--accent-color);
+            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;
         }
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* --- NEW: RIGHT SIDE LESSON PANEL --- */
+        #lesson-panel {
+            position: absolute;
+            top: 20px; right: 20px; bottom: 20px;
+            width: 45%;
+            border-radius: var(--border-radius-md);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255,255,255,0.8);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+            display: flex; flex-direction: column;
+            transform: translateX(120%); /* Hidden state */
+            opacity: 0;
+            transition: all 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+            z-index: 10;
+        }
+
+        /* Triggered via JS in Teaching Mode */
+        .canvas-wrapper.teaching-mode #lesson-panel {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        /* Glow effect when AI Speaks */
+        #lesson-panel.speaking-glow {
+            box-shadow: 0 0 30px rgba(0, 102, 204, 0.2), inset 0 0 20px rgba(0, 102, 204, 0.05);
+            border-color: rgba(0, 102, 204, 0.3);
+        }
+
+        .lesson-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .lesson-header h3 {
+            font-size: 13px; font-weight: 700;
+            color: var(--accent-color); text-transform: uppercase;
+            letter-spacing: 1px; display: flex; align-items: center; gap: 8px;
+        }
+
+        .btn-close-lesson {
+            background: #f0f0f5; border: none; width: 28px; height: 28px;
+            border-radius: 50%; font-size: 16px; cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+            color: var(--text-muted); transition: all 0.2s;
+        }
+
+        .btn-close-lesson:hover { background: #e0e0e5; color: var(--text-main); }
+
+        .lesson-body {
+            flex-grow: 1; padding: 20px; overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        .lesson-body::-webkit-scrollbar { width: 6px; }
+        .lesson-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+
+        /* Floating Teaching Cards */
+        .teaching-card {
+            background: #FFFFFF;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.03);
+            font-size: 15px; line-height: 1.6;
+            animation: slideUpFade 0.5s ease forwards;
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        .teaching-card strong { color: var(--accent-color); }
+
+        @keyframes slideUpFade {
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         /* ==========================================
            CONTROLS & AI CHAT AREA (OUTSIDE CANVAS)
            ========================================== */
         .interaction-area {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            max-width: 1000px;
-            width: 100%;
-            margin: 0 auto;
-            flex-grow: 1;
+            display: flex; flex-direction: column; gap: 16px;
+            max-width: 1100px; width: 100%; margin: 0 auto; flex-grow: 1;
         }
 
-        /* External Controls Bar */
         .controls-bar {
-            display: flex;
-            justify-content: center;
-            gap: 16px;
-            padding: 12px;
-            border-radius: var(--border-radius-lg);
+            display: flex; justify-content: center; gap: 16px;
+            padding: 12px; border-radius: var(--border-radius-lg);
         }
 
         .icon-btn {
-            background: var(--surface-solid);
-            border: 1px solid rgba(0,0,0,0.05);
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            color: var(--text-main);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            background: var(--surface-solid); border: 1px solid rgba(0,0,0,0.04);
+            width: 52px; height: 52px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; color: var(--text-main);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
             transition: var(--transition);
         }
 
-        .icon-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.06);
-        }
+        .icon-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0,0,0,0.06); }
+        .icon-btn:active { transform: translateY(0); }
+        .icon-btn svg { width: 22px; height: 22px; fill: currentColor; }
 
-        .icon-btn:active {
-            transform: translateY(0);
-        }
+        .icon-btn.active-state { background: var(--accent-color); color: white; }
 
-        .icon-btn svg {
-            width: 20px;
-            height: 20px;
-            fill: currentColor;
-        }
-
-        .icon-btn.active-state {
-            background: var(--accent-color);
-            color: white;
-        }
-
-        /* Chat Output Area */
+        /* Bottom History Chat */
         .chat-display {
-            flex-grow: 1;
-            padding: 24px;
-            border-radius: var(--border-radius-lg);
-            min-height: 120px;
-            max-height: 200px;
-            overflow-y: auto;
-            font-size: 15px;
-            line-height: 1.6;
-            color: var(--text-main);
-            position: relative;
-        }
-
-        .chat-display p {
-            margin-bottom: 10px;
+            flex-grow: 1; padding: 20px 24px; border-radius: var(--border-radius-lg);
+            min-height: 100px; max-height: 150px; overflow-y: auto;
+            font-size: 15px; line-height: 1.6;
         }
 
         .ai-label {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--accent-color);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            font-size: 11px; font-weight: 700; color: var(--accent-color);
+            text-transform: uppercase; letter-spacing: 0.5px;
+            margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
         }
 
         /* Voice Waveform Animation */
-        .waveform {
-            display: none;
-            align-items: center;
-            gap: 3px;
-            height: 12px;
-        }
+        .waveform { display: none; align-items: center; gap: 3px; height: 12px; }
         .waveform.active { display: flex; }
         .bar {
-            width: 3px;
-            background-color: var(--accent-color);
-            border-radius: 3px;
+            width: 3px; background-color: var(--accent-color); border-radius: 3px;
             animation: wave 1s ease-in-out infinite;
         }
         .bar:nth-child(1) { height: 40%; animation-delay: 0.0s; }
         .bar:nth-child(2) { height: 80%; animation-delay: 0.2s; }
         .bar:nth-child(3) { height: 100%; animation-delay: 0.4s; }
         .bar:nth-child(4) { height: 60%; animation-delay: 0.6s; }
-
-        @keyframes wave {
-            0%, 100% { transform: scaleY(0.5); }
-            50% { transform: scaleY(1); }
-        }
+        @keyframes wave { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
 
         /* Input Area */
         .input-group {
-            display: flex;
-            gap: 12px;
-            padding: 12px;
-            border-radius: var(--border-radius-lg);
-            align-items: center;
+            display: flex; gap: 12px; padding: 12px;
+            border-radius: var(--border-radius-lg); align-items: center;
         }
 
         .input-field {
-            flex-grow: 1;
-            background: transparent;
-            border: none;
-            outline: none;
-            padding: 12px 16px;
-            font-size: 15px;
-            color: var(--text-main);
+            flex-grow: 1; background: transparent; border: none; outline: none;
+            padding: 12px 16px; font-size: 16px; color: var(--text-main);
         }
 
-        .input-field::placeholder {
-            color: var(--text-muted);
-        }
+        .input-field::placeholder { color: var(--text-muted); }
 
         .send-btn {
-            background: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 20px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
+            background: var(--text-main); color: white; border: none;
+            padding: 14px 28px; border-radius: 24px; font-weight: 600;
+            cursor: pointer; transition: var(--transition); font-size: 15px;
         }
 
-        .send-btn:hover {
-            background: #0055b3;
-            transform: scale(1.02);
-        }
+        .send-btn:hover { background: #000; transform: scale(1.03); }
 
         /* ==========================================
-           RESPONSIVE DESIGN
+           RESPONSIVE & MOBILE OPTIMIZATION
            ========================================== */
-        @media (max-width: 768px) {
-            .app-layout { padding: 12px; gap: 16px; }
-            .canvas-wrapper { border-radius: var(--border-radius-md); }
-            header { padding: 10px 16px; }
-            .icon-btn { width: 42px; height: 42px; }
-            .send-btn { padding: 10px 20px; font-size: 14px; }
+        @media (max-width: 900px) {
+            #lesson-panel { width: 55%; }
         }
-
-        /* Landscape Mobile adjustments */
-        @media (max-height: 600px) and (orientation: landscape) {
-            .app-layout { flex-direction: row; flex-wrap: wrap; }
-            .video-section { flex: 1; min-width: 50%; }
-            .interaction-area { flex: 1; min-width: 40%; max-height: 100vh; overflow-y: auto; }
+        
+        @media (max-width: 768px) {
+            .app-layout { padding: 12px; gap: 12px; }
+            .canvas-wrapper { border-radius: var(--border-radius-md); }
+            header { padding: 12px 16px; }
+            .icon-btn { width: 46px; height: 46px; }
+            .send-btn { padding: 12px 20px; }
+            
+            /* On Portrait mobile, overlay covers more and moves to bottom */
+            #lesson-panel {
+                width: calc(100% - 24px);
+                top: auto; right: 12px; bottom: 12px; left: 12px;
+                height: 55%;
+                transform: translateY(120%);
+            }
+            .canvas-wrapper.teaching-mode #lesson-panel {
+                transform: translateY(0);
+            }
         }
     </style>
 
-    <!-- Import Maps for Three.js -->
     <script type="importmap">
         {
             "imports": {
@@ -371,9 +432,17 @@
 </head>
 <body>
 
+    <div id="api-modal-overlay">
+        <div class="modal-card">
+            <h2>AI Teacher Setup</h2>
+            <p>Connect your Gemini API Key to enable the smart virtual classroom.</p>
+            <input type="password" id="api-key-input-modal" placeholder="Paste your API key here..." autocomplete="off">
+            <button id="btn-save-key">Start Class</button>
+        </div>
+    </div>
+
     <div class="app-layout">
         
-        <!-- Header -->
         <header class="glass">
             <div class="header-left">
                 <div class="live-badge">
@@ -381,98 +450,134 @@
                 </div>
                 <div class="teacher-info">
                     <h1>Dr. Nova</h1>
-                    <p>AI Virtual Educator</p>
+                    <p>AI EdTech Platform</p>
                 </div>
             </div>
-            <!-- API Key Input for testing -->
-            <input type="password" id="api-key-input" placeholder="Gemini API Key..." style="font-size: 11px; padding: 4px 8px; border-radius: 8px; border: 1px solid #ddd; outline: none; width: 140px;">
+            <div class="header-right">
+                <span class="mode-indicator" id="ui-mode-badge">IDLE MODE</span>
+            </div>
         </header>
 
-        <!-- 3D Video Container (Strictly 16:9, No buttons inside) -->
         <section class="video-section">
             <div class="canvas-wrapper" id="video-wrapper">
                 
-                <!-- Loading Overlay -->
                 <div id="loader">
                     <div class="spinner"></div>
-                    <div style="font-size: 13px; color: #666; font-weight: 500;">Initializing AI Engine...</div>
+                    <div style="font-size: 14px; color: #333; font-weight: 600;">Initializing AI Engine...</div>
                 </div>
 
-                <!-- ThreeJS Canvas -->
                 <div id="canvas-container"></div>
-            
+                
+                <div id="lesson-panel">
+                    <div class="lesson-header">
+                        <h3><div class="live-dot" style="background:var(--accent-color);"></div> AI Explanation</h3>
+                        <button class="btn-close-lesson" id="btn-close-lesson" title="Back to Idle Mode">&times;</button>
+                    </div>
+                    <div class="lesson-body" id="lesson-body">
+                        </div>
+                </div>
             </div>
         </section>
 
-        <!-- Interaction Area (Outside Video) -->
         <section class="interaction-area">
             
-            <!-- External Control Buttons -->
             <div class="controls-bar glass">
                 <button class="icon-btn" id="btn-fullscreen" title="Fullscreen Class">
                     <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
                 </button>
-                <button class="icon-btn" id="btn-rotate" title="Toggle Auto-Rotate" class="active-state">
+                <button class="icon-btn active-state" id="btn-rotate" title="Toggle Auto-Rotate">
                     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" opacity="0"/><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5s2.24-5 5-5v3l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.44-2.43l1.41 1.41c.91-1.16 1.46-2.51 1.63-3.9h-2.02c-.14.87-.48 1.72-1.02 2.49z"/></svg>
                 </button>
-                <button class="icon-btn" id="btn-sound" title="Toggle AI Voice">
+                <button class="icon-btn active-state" id="btn-sound" title="Toggle AI Voice">
                     <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
                 </button>
             </div>
 
-            <!-- Chat Output -->
-            <div class="chat-display glass" id="chat-output">
+            <div class="chat-display glass">
                 <div class="ai-label">
-                    Dr. Nova 
+                    Status 
                     <div class="waveform" id="audio-wave">
                         <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
                     </div>
                 </div>
-                <p id="chat-text" style="opacity: 0.7;">Hello! I am Dr. Nova, your virtual AI teacher. Ask me any question, or use the microphone to speak to me.</p>
+                <p id="chat-text" style="color: var(--text-muted);">Classroom initialized. Awaiting questions...</p>
             </div>
 
-            <!-- Input Area -->
             <div class="input-group glass">
                 <button class="icon-btn" id="btn-mic" title="Voice Input">
                     <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
                 </button>
                 <input type="text" class="input-field" id="chat-input" placeholder="Ask anything about science, history, coding...">
-                <button class="send-btn" id="btn-send">Ask</button>
+                <button class="send-btn" id="btn-send">Ask Teacher</button>
             </div>
 
         </section>
     </div>
 
-    <!-- MAIN LOGIC (Three.js & AI) -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         /* ==========================================
-           1. THREE.JS ENVIRONMENT SETUP
+           0. API KEY MODAL LOGIC
+           ========================================== */
+        const modalOverlay = document.getElementById('api-modal-overlay');
+        const modalInput = document.getElementById('api-key-input-modal');
+        const btnSaveKey = document.getElementById('btn-save-key');
+        
+        let GEMINI_API_KEY = localStorage.getItem('gemini_api_key');
+
+        if (!GEMINI_API_KEY) {
+            modalOverlay.classList.remove('hidden');
+        } else {
+            modalOverlay.classList.add('hidden');
+        }
+
+        btnSaveKey.addEventListener('click', () => {
+            const key = modalInput.value.trim();
+            if (key) {
+                localStorage.setItem('gemini_api_key', key);
+                GEMINI_API_KEY = key;
+                modalOverlay.classList.add('hidden');
+            }
+        });
+
+        /* ==========================================
+           1. THREE.JS ENVIRONMENT & MODES SETUP
            ========================================== */
         let scene, camera, renderer, controls, clock, modelGroup;
         const container = document.getElementById('canvas-container');
         const wrapper = document.getElementById('video-wrapper');
         const loaderUI = document.getElementById('loader');
 
+        // State Management for Cinematic Transitions
+        let isTeachingMode = false;
+        let isSpeaking = false;
+        const uiModeBadge = document.getElementById('ui-mode-badge');
+        
+        // Camera Math Vectors
+        const cameraIdlePos = new THREE.Vector3(0, 1.2, 3.5);
+        const targetIdlePos = new THREE.Vector3(0, 0.8, 0);
+        
+        // Teaching mode: Move camera right to put teacher on the bottom-left, slightly zoomed
+        const cameraTeachPos = new THREE.Vector3(1.1, 1.1, 2.4); 
+        const targetTeachPos = new THREE.Vector3(0.5, 0.75, 0); 
+
+        const currentCamTarget = targetIdlePos.clone();
+
         init3D();
         animate3D();
 
         function init3D() {
             scene = new THREE.Scene();
-            // Transparent background to let CSS gradient show through for premium feel
             scene.background = null; 
-            
             clock = new THREE.Clock();
 
-            // Setup Camera based on container aspect ratio
             const aspect = container.clientWidth / container.clientHeight;
             camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
-            camera.position.set(0, 1.2, 3.5); // Cinematic portrait framing
+            camera.position.copy(cameraIdlePos);
 
-            // Setup Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -481,44 +586,44 @@
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             container.appendChild(renderer.domElement);
 
-            // Lighting (Soft Studio Setup)
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+            // Premium Studio Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
-            dirLight.position.set(5, 5, 4);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
+            dirLight.position.set(4, 6, 3);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 1024;
             dirLight.shadow.mapSize.height = 1024;
-            dirLight.shadow.bias = -0.001;
+            dirLight.shadow.bias = -0.0005;
             scene.add(dirLight);
 
-            const fillLight = new THREE.DirectionalLight(0xebefff, 1.0);
-            fillLight.position.set(-5, 2, -2);
+            const fillLight = new THREE.DirectionalLight(0xebefff, 1.2);
+            fillLight.position.set(-4, 2, -2);
             scene.add(fillLight);
 
-            // Soft shadow catcher plane
+            const rimLight = new THREE.PointLight(0xaaccff, 1.5, 10);
+            rimLight.position.set(0, 2, -3);
+            scene.add(rimLight);
+
             const planeGeo = new THREE.PlaneGeometry(10, 10);
-            const planeMat = new THREE.ShadowMaterial({ opacity: 0.08 });
+            const planeMat = new THREE.ShadowMaterial({ opacity: 0.05 });
             const plane = new THREE.Mesh(planeGeo, planeMat);
             plane.rotation.x = -Math.PI / 2;
             plane.position.y = 0;
             plane.receiveShadow = true;
             scene.add(plane);
 
-            // Controls
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.minDistance = 2;
+            controls.minDistance = 1.5;
             controls.maxDistance = 6;
-            controls.target.set(0, 0.8, 0);
+            controls.target.copy(targetIdlePos);
             controls.enablePan = false;
-            // Enable auto-rotate by default for dynamic feel
             controls.autoRotate = true;
             controls.autoRotateSpeed = 1.0;
 
-            // Load 3D Model
             modelGroup = new THREE.Group();
             scene.add(modelGroup);
 
@@ -526,7 +631,6 @@
             loader.load('./teacher.glb', function (gltf) {
                 const model = gltf.scene;
 
-                // Enable shadows
                 model.traverse((child) => {
                     if (child.isMesh) {
                         child.castShadow = true;
@@ -534,34 +638,27 @@
                     }
                 });
 
-                // Auto Scale & Center
+                // Auto Scale & Center dynamically
                 const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
-                const center = box.getCenter(new THREE.Vector3());
-                
-                // Scale to roughly 1.8 units high
                 const scale = 1.8 / size.y;
                 model.scale.set(scale, scale, scale);
 
-                // Re-center after scale
                 const newBox = new THREE.Box3().setFromObject(model);
                 const newCenter = newBox.getCenter(new THREE.Vector3());
                 model.position.x = -newCenter.x;
-                model.position.y = -newBox.min.y; // Feet at y=0
+                model.position.y = -newBox.min.y; 
                 model.position.z = -newCenter.z;
 
                 modelGroup.add(model);
 
-                // Hide Loading Screen
                 loaderUI.style.opacity = '0';
                 setTimeout(() => loaderUI.style.display = 'none', 500);
-
             }, undefined, function (error) {
                 console.error('Error loading model:', error);
-                loaderUI.innerHTML = `<div style="color:var(--danger); font-weight:500;">Error: Could not load teacher.glb</div><div style="font-size:12px; color:#666; margin-top:8px;">Ensure 'teacher.glb' is in the same folder.</div>`;
+                loaderUI.innerHTML = `<div style="color:var(--danger); font-weight:600;">Error: Could not load teacher.glb</div><div style="font-size:13px; color:#666; margin-top:8px;">Ensure it is in the same folder.</div>`;
             });
 
-            // Handle Resize accurately based on container, not just window
             const resizeObserver = new ResizeObserver(entries => {
                 for (let entry of entries) {
                     const width = entry.contentRect.width;
@@ -578,9 +675,32 @@
             requestAnimationFrame(animate3D);
             const time = clock.getElapsedTime();
 
-            // Add subtle floating realistic effect to the teacher
+            // GSAP-like Smooth Camera Transitions depending on Mode
+            const targetCam = isTeachingMode ? cameraTeachPos : cameraIdlePos;
+            const targetLook = isTeachingMode ? targetTeachPos : targetIdlePos;
+
+            // Interpolate Camera Position and LookAt
+            camera.position.lerp(targetCam, 0.04);
+            currentCamTarget.lerp(targetLook, 0.04);
+            controls.target.copy(currentCamTarget);
+
             if (modelGroup) {
-                modelGroup.position.y = Math.sin(time * 1.5) * 0.02;
+                if (isSpeaking) {
+                    // Extra animation to simulate speaking and energy
+                    modelGroup.position.y = (Math.sin(time * 3) * 0.02) - 0.01;
+                    modelGroup.rotation.y = Math.sin(time * 1.5) * 0.03; 
+                } else {
+                    // Smooth idle breathing
+                    modelGroup.position.y = Math.sin(time * 1.2) * 0.02;
+                    modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
+                }
+            }
+
+            // Manage auto-rotation state
+            if (isTeachingMode) {
+                controls.autoRotate = false; // Keep focused while teaching
+            } else {
+                controls.autoRotate = document.getElementById('btn-rotate').classList.contains('active-state');
             }
 
             controls.update();
@@ -588,52 +708,67 @@
         }
 
         /* ==========================================
-           2. UI CONTROLS & LOGIC
+           2. UI CONTROLS & MODE TOGGLES
            ========================================== */
         const btnRotate = document.getElementById('btn-rotate');
         const btnFullscreen = document.getElementById('btn-fullscreen');
         const btnSound = document.getElementById('btn-sound');
+        const btnCloseLesson = document.getElementById('btn-close-lesson');
         
-        // Setup initial UI states
-        document.getElementById('btn-rotate').classList.add('active-state');
         let soundEnabled = true;
 
         btnRotate.addEventListener('click', () => {
-            controls.autoRotate = !controls.autoRotate;
             btnRotate.classList.toggle('active-state');
         });
 
         btnSound.addEventListener('click', () => {
             soundEnabled = !soundEnabled;
             btnSound.classList.toggle('active-state');
-            if(!soundEnabled) window.speechSynthesis.cancel(); // Stop current speech
+            if(!soundEnabled) window.speechSynthesis.cancel();
         });
-        btnSound.classList.add('active-state');
 
-        // Fullscreen Logic (Applied to wrapper to keep 16:9 immersion)
         btnFullscreen.addEventListener('click', () => {
             if (!document.fullscreenElement) {
-                wrapper.requestFullscreen().catch(err => {
-                    console.warn(`Error attempting to enable fullscreen: ${err.message}`);
-                });
+                wrapper.requestFullscreen().catch(err => console.warn(err));
             } else {
                 document.exitFullscreen();
             }
         });
 
+        // Toggle back to Idle Mode manually
+        btnCloseLesson.addEventListener('click', () => {
+            setIdleMode();
+        });
+
+        function setTeachingMode() {
+            isTeachingMode = true;
+            wrapper.classList.add('teaching-mode');
+            uiModeBadge.innerText = "TEACHING MODE";
+            uiModeBadge.style.background = "rgba(255, 59, 48, 0.1)";
+            uiModeBadge.style.color = "var(--danger)";
+        }
+
+        function setIdleMode() {
+            isTeachingMode = false;
+            wrapper.classList.remove('teaching-mode');
+            uiModeBadge.innerText = "IDLE MODE";
+            uiModeBadge.style.background = "var(--accent-glow)";
+            uiModeBadge.style.color = "var(--accent-color)";
+        }
+
         /* ==========================================
-           3. AI INTEGRATION (GEMINI API & VOICE)
+           3. AI INTEGRATION (GEMINI API, CARDS & VOICE)
            ========================================== */
         const chatInput = document.getElementById('chat-input');
         const btnSend = document.getElementById('btn-send');
         const btnMic = document.getElementById('btn-mic');
         const chatText = document.getElementById('chat-text');
         const audioWave = document.getElementById('audio-wave');
-        const apiKeyInput = document.getElementById('api-key-input');
+        const lessonBody = document.getElementById('lesson-body');
+        const lessonPanel = document.getElementById('lesson-panel');
 
         let isListening = false;
         
-        // Native Speech Recognition Setup
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
         
@@ -648,23 +783,15 @@
                 btnMic.classList.add('active-state');
                 chatInput.placeholder = "Listening...";
             };
-
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 chatInput.value = transcript;
                 handleUserQuery(transcript);
             };
-
-            recognition.onerror = (event) => {
-                console.error("Speech Recognition Error:", event.error);
-                resetMic();
-            };
-
-            recognition.onend = () => {
-                resetMic();
-            };
+            recognition.onerror = () => resetMic();
+            recognition.onend = () => resetMic();
         } else {
-            btnMic.style.display = 'none'; // Hide mic if not supported
+            btnMic.style.display = 'none';
         }
 
         function resetMic() {
@@ -675,14 +802,9 @@
 
         btnMic.addEventListener('click', () => {
             if (!recognition) return;
-            if (isListening) {
-                recognition.stop();
-            } else {
-                recognition.start();
-            }
+            isListening ? recognition.stop() : recognition.start();
         });
 
-        // Chat Input Logic
         btnSend.addEventListener('click', () => {
             const query = chatInput.value.trim();
             if (query) handleUserQuery(query);
@@ -697,25 +819,30 @@
 
         async function handleUserQuery(query) {
             chatInput.value = "";
-            chatText.style.opacity = "1";
-            chatText.innerHTML = `<strong>You:</strong> ${query}<br><br><em>Dr. Nova is thinking...</em>`;
+            chatText.innerHTML = `<strong>You asked:</strong> ${query}`;
             
-            const apiKey = apiKeyInput.value.trim();
-            if (!apiKey) {
-                chatText.innerHTML = `<strong style="color:var(--danger)">Error:</strong> Please enter your Gemini API Key in the top right corner to enable AI responses.`;
+            // Trigger UI Mode Transformation
+            setTeachingMode();
+            lessonBody.innerHTML = `<div class="teaching-card" style="text-align:center;">
+                <div class="spinner" style="margin: 0 auto 10px; width: 30px; height:30px;"></div>
+                <span style="color:var(--text-muted); font-size:13px;">Dr. Nova is structuring the lesson...</span>
+            </div>`;
+
+            if (!GEMINI_API_KEY) {
+                modalOverlay.classList.remove('hidden');
+                setIdleMode();
                 return;
             }
 
             try {
-                // Gemini API Call
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         systemInstruction: {
-                            parts: [{ text: "You are Dr. Nova, a highly intelligent, friendly, and concise virtual AI teacher. Keep answers under 3 sentences so they can be spoken clearly in a virtual class." }]
+                            parts: [{ text: "You are Dr. Nova, a premium AI virtual teacher. Format answers in 2 or 3 short paragraphs so they can be displayed as modern lesson cards. Be concise, highly educational, and friendly." }]
                         },
                         contents: [{ parts: [{ text: query }] }]
                     })
@@ -730,60 +857,75 @@
 
             } catch (error) {
                 console.error(error);
-                chatText.innerHTML = `<strong style="color:var(--danger)">Connection Error:</strong> Could not reach AI servers. Check API key.`;
+                chatText.innerHTML = `<strong style="color:var(--danger)">Connection Error. Check API key.</strong>`;
+                setIdleMode();
             }
         }
 
         function displayAndSpeakResponse(text) {
-            // Typing effect
-            chatText.innerHTML = "";
-            let i = 0;
-            const speed = 30; // ms per char
+            // Clear loading card
+            lessonBody.innerHTML = "";
             
-            // Speak simultaneously
-            if(soundEnabled) speakText(text);
+            // Split AI response into distinct paragraphs for Teaching Cards
+            const paragraphs = text.split('\n\n').filter(p => p.trim() !== "");
+            
+            paragraphs.forEach((p, index) => {
+                // Formatting strong tags slightly to look nicer in cards
+                const formattedHtml = p.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                const card = document.createElement('div');
+                card.className = 'teaching-card';
+                card.style.animationDelay = `${index * 0.2}s`;
+                card.innerHTML = formattedHtml;
+                lessonBody.appendChild(card);
+            });
 
-            function typeWriter() {
-                if (i < text.length) {
-                    chatText.innerHTML += text.charAt(i);
-                    i++;
-                    setTimeout(typeWriter, speed);
-                }
-            }
-            typeWriter();
+            // Auto-scroll to bottom of lesson panel if content is long
+            setTimeout(() => {
+                lessonBody.scrollTo({ top: lessonBody.scrollHeight, behavior: 'smooth' });
+            }, 500);
+
+            // Speak simultaneously and trigger animations
+            if (soundEnabled) speakText(text);
         }
 
-        // Native Text-to-Speech Fallback (Fast, reliable on all devices)
         function speakText(text) {
             if (!window.speechSynthesis) return;
             
-            window.speechSynthesis.cancel(); // Stop current
+            window.speechSynthesis.cancel();
 
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0;
-            utterance.pitch = 1.1; // Slightly friendly tone
+            // Strip markdown asterisks for cleaner speech
+            const cleanText = text.replace(/\*/g, '');
+            const utterance = new SpeechSynthesisUtterance(cleanText);
             
-            // Select a good english female voice if available
+            utterance.rate = 1.05;
+            utterance.pitch = 1.05;
+            
             const voices = window.speechSynthesis.getVoices();
             const preferredVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google US English'));
             if(preferredVoice) utterance.voice = preferredVoice;
 
             utterance.onstart = () => {
+                isSpeaking = true;
                 audioWave.classList.add('active');
+                lessonPanel.classList.add('speaking-glow');
             };
             
             utterance.onend = () => {
+                isSpeaking = false;
                 audioWave.classList.remove('active');
+                lessonPanel.classList.remove('speaking-glow');
             };
 
             utterance.onerror = () => {
+                isSpeaking = false;
                 audioWave.classList.remove('active');
+                lessonPanel.classList.remove('speaking-glow');
             };
 
             window.speechSynthesis.speak(utterance);
         }
 
-        // Preload voices
         window.speechSynthesis.onvoiceschanged = () => {
             window.speechSynthesis.getVoices();
         };
@@ -791,5 +933,3 @@
     </script>
 </body>
 </html>
-
-```
