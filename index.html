@@ -45,7 +45,6 @@
             overflow-x: hidden;
         }
 
-        /* Glassmorphism utility */
         .glass {
             background: var(--surface-color);
             backdrop-filter: blur(30px);
@@ -68,7 +67,6 @@
             gap: 20px;
         }
 
-        /* Top Header */
         header {
             display: flex;
             justify-content: space-between;
@@ -123,10 +121,10 @@
 
         .canvas-wrapper {
             position: relative; width: 100%; max-width: 1100px;
-            aspect-ratio: 16 / 9;
+            aspect-ratio: 16 / 9; /* Strict 16:9 maintained */
             border-radius: var(--border-radius-lg);
             overflow: hidden;
-            background: linear-gradient(135deg, #ffffff 0%, #f0f0f5 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #e8e8f0 100%);
             box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 24px 48px rgba(0, 0, 0, 0.05);
             transition: var(--transition);
         }
@@ -136,7 +134,6 @@
         #canvas-container { width: 100%; height: 100%; display: block; cursor: grab; }
         #canvas-container:active { cursor: grabbing; }
 
-        /* Loading Screen inside canvas */
         #loader {
             position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(255,255,255,0.95); display: flex; flex-direction: column;
@@ -152,34 +149,29 @@
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* RIGHT SIDE LESSON PANEL */
+        /* RIGHT SIDE LESSON PANEL - INSIDE 16:9 BOX */
         #lesson-panel {
             position: absolute;
-            top: 20px; right: 20px; bottom: 20px;
-            width: 45%;
-            border-radius: var(--border-radius-md);
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid rgba(255,255,255,0.8);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+            top: 0; right: 0; bottom: 0;
+            width: 65%; /* Panel takes right side */
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 1) 20%);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-left: 1px solid rgba(255,255,255,0.6);
             display: flex; flex-direction: column;
-            transform: translateX(120%);
+            transform: translateX(100%);
             opacity: 0;
-            transition: all 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+            transition: transform 0.8s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.4s ease;
             z-index: 10;
         }
 
-        /* Triggered via JS in Teaching Mode */
         .canvas-wrapper.teaching-mode #lesson-panel {
             transform: translateX(0);
             opacity: 1;
         }
 
-        /* Glow effect when AI Speaks */
         #lesson-panel.speaking-glow {
-            box-shadow: 0 0 30px rgba(0, 102, 204, 0.2), inset 0 0 20px rgba(0, 102, 204, 0.05);
-            border-color: rgba(0, 102, 204, 0.3);
+            box-shadow: inset 20px 0 30px rgba(0, 102, 204, 0.05);
         }
 
         .lesson-header {
@@ -211,18 +203,14 @@
         .lesson-body::-webkit-scrollbar { width: 6px; }
         .lesson-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
 
-        /* Floating Teaching Cards */
         .teaching-card {
             background: #FFFFFF;
             border-radius: 12px;
             padding: 16px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.03);
             border: 1px solid rgba(0,0,0,0.03);
-            font-size: 15px; line-height: 1.6;
-            transform: translateY(0);
-            opacity: 1;
-            transition: opacity 0.3s ease;
+            font-size: 14px; line-height: 1.6;
         }
 
         .teaching-card strong { color: var(--accent-color); }
@@ -255,7 +243,6 @@
 
         .icon-btn.active-state { background: var(--accent-color); color: white; }
 
-        /* Bottom History Chat */
         .chat-display {
             flex-grow: 1; padding: 20px 24px; border-radius: var(--border-radius-lg);
             min-height: 100px; max-height: 150px; overflow-y: auto;
@@ -268,7 +255,6 @@
             margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
         }
 
-        /* Voice Waveform Animation */
         .waveform { display: none; align-items: center; gap: 3px; height: 12px; }
         .waveform.active { display: flex; }
         .bar {
@@ -281,7 +267,6 @@
         .bar:nth-child(4) { height: 60%; animation-delay: 0.6s; }
         @keyframes wave { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
 
-        /* Input Area */
         .input-group {
             display: flex; gap: 12px; padding: 12px;
             border-radius: var(--border-radius-lg); align-items: center;
@@ -298,6 +283,7 @@
             background: var(--text-main); color: white; border: none;
             padding: 14px 28px; border-radius: 24px; font-weight: 600;
             cursor: pointer; transition: var(--transition); font-size: 15px;
+            white-space: nowrap;
         }
 
         .send-btn:hover { background: #000; transform: scale(1.03); }
@@ -305,26 +291,19 @@
         /* ==========================================
            RESPONSIVE & MOBILE OPTIMIZATION
            ========================================== */
-        @media (max-width: 900px) {
-            #lesson-panel { width: 55%; }
-        }
-        
         @media (max-width: 768px) {
-            .app-layout { padding: 12px; gap: 12px; }
-            .canvas-wrapper { border-radius: var(--border-radius-md); aspect-ratio: 16 / 9; }
-            header { padding: 12px 16px; }
-            .icon-btn { width: 46px; height: 46px; }
-            .send-btn { padding: 12px 20px; }
+            .app-layout { padding: 10px; gap: 10px; }
+            .canvas-wrapper { border-radius: var(--border-radius-md); }
+            header { padding: 12px; }
+            .teacher-info h1 { font-size: 16px; }
+            .icon-btn { width: 44px; height: 44px; }
+            .send-btn { padding: 12px 20px; font-size: 14px; }
             
             #lesson-panel {
-                width: calc(100% - 24px);
-                top: auto; right: 12px; bottom: 12px; left: 12px;
-                height: 55%;
-                transform: translateY(120%);
+                width: 60%; /* Still keeps character visible on left */
             }
-            .canvas-wrapper.teaching-mode #lesson-panel {
-                transform: translateY(0);
-            }
+            .lesson-body { padding: 12px; }
+            .teaching-card { font-size: 13px; padding: 12px; margin-bottom: 10px;}
         }
     </style>
 
@@ -404,7 +383,7 @@
                 <button class="icon-btn" id="btn-mic" title="Voice Input">
                     <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
                 </button>
-                <input type="text" class="input-field" id="chat-input" placeholder="Ask anything about science, history, coding...">
+                <input type="text" class="input-field" id="chat-input" placeholder="Ask anything...">
                 <button class="send-btn" id="btn-send">Ask Teacher</button>
             </div>
 
@@ -416,14 +395,8 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        /* ==========================================
-           IMPORTANT: API KEY SYSTEM CONFIGURATION
-           ========================================== */
-        const GEMINI_API_KEY = "PASTE_YOUR_API_KEY_HERE";
+        const GEMINI_API_KEY = "PASTE_YOUR_API_KEY_HERE"; // Put your Key Here
 
-        /* ==========================================
-           1. THREE.JS ENVIRONMENT SETUP
-           ========================================== */
         let scene, camera, renderer, controls, clock, modelGroup;
         const container = document.getElementById('canvas-container');
         const wrapper = document.getElementById('video-wrapper');
@@ -434,8 +407,7 @@
         let isSpeaking = false;
         const uiModeBadge = document.getElementById('ui-mode-badge');
         
-        // Intelligent Multi-Device Responsive Vector Tracking
-        const currentCamTarget = new THREE.Vector3(0, 1.35, 0);
+        const currentCamTarget = new THREE.Vector3(0, 1.4, 0);
 
         init3D();
         animate3D();
@@ -448,7 +420,6 @@
             const aspect = container.clientWidth / container.clientHeight;
             camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
             
-            // Initial positioning computed gracefully before responsive loops
             const config = getResponsiveCameraConfig();
             camera.position.copy(config.idleCam);
 
@@ -460,32 +431,22 @@
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             container.appendChild(renderer.domElement);
 
-            // High-End Premium Studio Cinematic Light Setup
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
             scene.add(ambientLight);
 
-            // Key Light focused sharply onto Face/Torso
-            const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+            const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
             keyLight.position.set(2, 4, 3);
             keyLight.castShadow = true;
-            keyLight.shadow.mapSize.width = 2048;
-            keyLight.shadow.mapSize.height = 2048;
-            keyLight.shadow.bias = -0.001;
+            keyLight.shadow.mapSize.width = 1024;
+            keyLight.shadow.mapSize.height = 1024;
             scene.add(keyLight);
 
-            // Soft Fill Light to eliminate harsh shadows on the secondary profile
-            const fillLight = new THREE.DirectionalLight(0xebf3ff, 1.4);
+            const fillLight = new THREE.DirectionalLight(0xebf3ff, 1.2);
             fillLight.position.set(-3, 2, 2);
             scene.add(fillLight);
 
-            // Apple Aesthetic Cold Blue Rim Light highlighting hair & shoulders from back
-            const rimLight = new THREE.PointLight(0x4499ff, 2.5, 8);
-            rimLight.position.set(0, 3, -3);
-            scene.add(rimLight);
-
-            // Soft floor shadow collector
             const planeGeo = new THREE.PlaneGeometry(15, 15);
-            const planeMat = new THREE.ShadowMaterial({ opacity: 0.06 });
+            const planeMat = new THREE.ShadowMaterial({ opacity: 0.05 });
             const plane = new THREE.Mesh(planeGeo, planeMat);
             plane.rotation.x = -Math.PI / 2;
             plane.position.y = 0;
@@ -495,7 +456,7 @@
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.minDistance = 1.2;
+            controls.minDistance = 1.0;
             controls.maxDistance = 5;
             controls.enablePan = false;
             controls.autoRotate = true;
@@ -505,7 +466,6 @@
             modelGroup = new THREE.Group();
             scene.add(modelGroup);
 
-            // Load Model with progress reporting
             const loader = new GLTFLoader();
             loader.load('./teacher.glb', function (gltf) {
                 const model = gltf.scene;
@@ -514,16 +474,14 @@
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
-                        if(child.material) child.material.roughness = 0.45;
                     }
                 });
 
-                // Auto-fit framing normalization matrix calculation
+                // Fixed the logic that showed ONLY legs. Now forces standard 1.7m height and anchors feet strictly to Y=0
                 const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
                 
-                // Target height absolute standardized setup
-                const targetHeight = 1.8;
+                const targetHeight = 1.7; 
                 const scale = targetHeight / size.y;
                 model.scale.set(scale, scale, scale);
 
@@ -542,12 +500,12 @@
             function (xhr) {
                 if (xhr.total) {
                     const percent = Math.round((xhr.loaded / xhr.total) * 100);
-                    loadingStatus.innerText = `Loading Dr. Nova Engine (${percent}%)...`;
+                    loadingStatus.innerText = `Loading Engine (${percent}%)...`;
                 }
             },
             function (error) {
-                console.error('Error loading model:', error);
-                loaderUI.innerHTML = `<div style="color:var(--danger); font-weight:600;">Error: Could not load teacher.glb</div><div style="font-size:13px; color:#666; margin-top:8px;">Place your 3D model file in the website root directory.</div>`;
+                console.error('Error:', error);
+                loaderUI.innerHTML = `<div style="color:var(--danger); font-weight:600;">Error: Could not load teacher.glb</div>`;
             });
 
             const resizeObserver = new ResizeObserver(() => {
@@ -561,46 +519,29 @@
         }
 
         /* ==========================================
-           2. MATHEMATICAL MULTI-DEVICE RESPONSIVE OVERRIDES
+           CAMERA POSITION MATH - FIXED FOR HALF BODY
            ========================================== */
         function getResponsiveCameraConfig() {
             const width = window.innerWidth;
             const isMobile = width <= 768;
-            const isPortrait = window.innerHeight > width;
 
             if (isMobile) {
-                if (isPortrait) {
-                    // Mobile Portrait Mode adjustments: Lift target high up directly to Chest & Face
-                    return {
-                        idleCam: new THREE.Vector3(0, 1.45, 2.1),
-                        idleTarget: new THREE.Vector3(0, 1.35, 0),
-                        teachCam: new THREE.Vector3(0, 1.45, 1.8),
-                        teachTarget: new THREE.Vector3(0, 1.35, 0)
-                    };
-                } else {
-                    // Mobile Landscape Mode adjustments
-                    return {
-                        idleCam: new THREE.Vector3(0, 1.35, 2.3),
-                        idleTarget: new THREE.Vector3(0, 1.25, 0),
-                        teachCam: new THREE.Vector3(0.5, 1.35, 1.9),
-                        teachTarget: new THREE.Vector3(0.15, 1.30, 0)
-                    };
-                }
-            } else if (width <= 1024) {
-                // Tablets layout parameters
                 return {
-                    idleCam: new THREE.Vector3(0, 1.4, 2.6),
-                    idleTarget: new THREE.Vector3(0, 1.25, 0),
-                    teachCam: new THREE.Vector3(0.6, 1.4, 2.2),
-                    teachTarget: new THREE.Vector3(0.2, 1.3, 0)
+                    // Half-body face focus for mobile
+                    idleCam: new THREE.Vector3(0, 1.45, 1.8),
+                    idleTarget: new THREE.Vector3(0, 1.35, 0),
+                    // Shifts camera Right (+X) and Up (+Y) to push character to Bottom-Left
+                    teachCam: new THREE.Vector3(0.5, 1.55, 2.4),
+                    teachTarget: new THREE.Vector3(0.5, 1.05, 0)
                 };
             } else {
-                // Desktop Ultra HD proportions
                 return {
-                    idleCam: new THREE.Vector3(0, 1.3, 3.2),
-                    idleTarget: new THREE.Vector3(0, 1.15, 0),
-                    teachCam: new THREE.Vector3(0.75, 1.3, 2.3),
-                    teachTarget: new THREE.Vector3(0.25, 1.25, 0)
+                    // Half-body face focus for desktop
+                    idleCam: new THREE.Vector3(0, 1.45, 1.8),
+                    idleTarget: new THREE.Vector3(0, 1.35, 0),
+                    // Shifts camera Right (+X) and Up (+Y) to push character to Bottom-Left
+                    teachCam: new THREE.Vector3(0.8, 1.6, 2.8),
+                    teachTarget: new THREE.Vector3(0.8, 1.0, 0)
                 };
             }
         }
@@ -613,20 +554,15 @@
             const targetCam = isTeachingMode ? config.teachCam : config.idleCam;
             const targetLook = isTeachingMode ? config.teachTarget : config.idleTarget;
 
-            // Interpolate matrices tracking transitions smoothly
             camera.position.lerp(targetCam, 0.05);
             currentCamTarget.lerp(targetLook, 0.05);
             controls.target.copy(currentCamTarget);
 
             if (modelGroup) {
                 if (isSpeaking) {
-                    // Simulates advanced natural conversation energy up-down mechanics
                     modelGroup.position.y = (Math.sin(time * 2.5) * 0.015) - 0.005;
                     modelGroup.rotation.y = Math.sin(time * 1.8) * 0.02;
-                    // Lip Sync style simulated structural vibration
-                    modelGroup.children[0].position.z = Math.sin(time * 45) * 0.002;
                 } else {
-                    // High refinement realistic idle breathing routine 
                     modelGroup.position.y = Math.sin(time * 1.1) * 0.012;
                     modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
                 }
@@ -643,17 +579,15 @@
         }
 
         /* ==========================================
-           3. UI CONTROLS & CONTROLLER INTERACTION
+           UI & MODE SWITCHING
            ========================================== */
         const btnRotate = document.getElementById('btn-rotate');
         const btnFullscreen = document.getElementById('btn-fullscreen');
         const btnSound = document.getElementById('btn-sound');
         const btnCloseLesson = document.getElementById('btn-close-lesson');
-        
         let soundEnabled = true;
 
         btnRotate.addEventListener('click', () => btnRotate.classList.toggle('active-state'));
-
         btnSound.addEventListener('click', () => {
             soundEnabled = !soundEnabled;
             btnSound.classList.toggle('active-state');
@@ -661,11 +595,8 @@
         });
 
         btnFullscreen.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                wrapper.requestFullscreen().catch(err => console.warn(err));
-            } else {
-                document.exitFullscreen();
-            }
+            if (!document.fullscreenElement) wrapper.requestFullscreen().catch(err => {});
+            else document.exitFullscreen();
         });
 
         btnCloseLesson.addEventListener('click', () => setIdleMode());
@@ -687,7 +618,7 @@
         }
 
         /* ==========================================
-           4. DATA INTERACTION STREAMING ENGINE
+           API & CHAT LOGIC
            ========================================== */
         const chatInput = document.getElementById('chat-input');
         const btnSend = document.getElementById('btn-send');
@@ -705,34 +636,17 @@
             recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.interimResults = false;
-            recognition.lang = 'en-US';
-
-            recognition.onstart = () => {
-                isListening = true;
-                btnMic.classList.add('active-state');
-                chatInput.placeholder = "Listening active...";
-            };
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                chatInput.value = transcript;
-                handleUserQuery(transcript);
-            };
+            
+            recognition.onstart = () => { isListening = true; btnMic.classList.add('active-state'); chatInput.placeholder = "Listening..."; };
+            recognition.onresult = (event) => { chatInput.value = event.results[0][0].transcript; handleUserQuery(chatInput.value); };
             recognition.onerror = () => resetMic();
             recognition.onend = () => resetMic();
         } else {
             btnMic.style.display = 'none';
         }
 
-        function resetMic() {
-            isListening = false;
-            btnMic.classList.remove('active-state');
-            chatInput.placeholder = "Ask anything about science, history, coding...";
-        }
-
-        btnMic.addEventListener('click', () => {
-            if (!recognition) return;
-            isListening ? recognition.stop() : recognition.start();
-        });
+        function resetMic() { isListening = false; btnMic.classList.remove('active-state'); chatInput.placeholder = "Ask anything..."; }
+        btnMic.addEventListener('click', () => { if (recognition) isListening ? recognition.stop() : recognition.start(); });
 
         btnSend.addEventListener('click', () => {
             const query = chatInput.value.trim();
@@ -752,9 +666,9 @@
             
             setTeachingMode();
             lessonBody.innerHTML = `
-                <div class="teaching-card" style="text-align:center; background:none; box-shadow:none;">
+                <div class="teaching-card" style="text-align:center; box-shadow:none; border:none; background:none;">
                     <div class="spinner" style="margin: 0 auto 10px; width: 30px; height:30px;"></div>
-                    <span style="color:var(--text-muted); font-size:13px;">Dr. Nova is structuring the response...</span>
+                    <span style="color:var(--text-muted); font-size:13px;">Thinking...</span>
                 </div>`;
 
             if (!GEMINI_API_KEY || GEMINI_API_KEY === "PASTE_YOUR_API_KEY_HERE") {
@@ -771,58 +685,39 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        systemInstruction: {
-                            parts: [{ text: "You are Dr. Nova, a elite AI virtual teacher. Format answers in 2 or 3 short elegant clean paragraphs. Do not use asterisks or symbols unnecessarily. Be highly educational, crisp, and direct." }]
-                        },
+                        systemInstruction: { parts: [{ text: "Format answers in 2 or 3 short clean paragraphs. Be highly educational, crisp, and direct." }] },
                         contents: [{ parts: [{ text: query }] }]
                     })
                 });
 
-                if (!response.ok) throw new Error("Network Response Fail");
-                
+                if (!response.ok) throw new Error("API Error");
                 const data = await response.json();
-                const aiResponseText = data.candidates[0].content.parts[0].text;
-                
-                await streamResponseIntoCards(aiResponseText);
-
+                await streamResponseIntoCards(data.candidates[0].content.parts[0].text);
             } catch (error) {
-                console.error(error);
-                chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed. Check authentication keys or parameters.</strong>`;
+                chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed.</strong>`;
                 setIdleMode();
             }
         }
 
-        /* ==========================================
-           5. SMOOTH TYPEWRITER ACCELERATOR DRIVER
-           ========================================== */
         async function streamResponseIntoCards(text) {
             lessonBody.innerHTML = "";
-            
-            // Simultaneously voice trigger to balance engine tasks
             if (soundEnabled) speakText(text);
 
             const paragraphs = text.split('\n\n').filter(p => p.trim() !== "");
-            
             for (let i = 0; i < paragraphs.length; i++) {
                 const card = document.createElement('div');
                 card.className = 'teaching-card';
                 lessonBody.appendChild(card);
                 
-                // Splitting individual word chunks to build smooth streaming typewriter motion
                 const tokens = paragraphs[i].split(/(\s+)/);
                 let structuredOutput = "";
                 
                 for (let token of tokens) {
                     structuredOutput += token;
-                    // Inline conversion pattern formatting
                     card.innerHTML = structuredOutput.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
                     lessonBody.scrollTop = lessonBody.scrollHeight;
-                    
-                    // Adjustable writing delay interval metrics
                     await new Promise(resolve => setTimeout(resolve, 35));
                 }
-                
-                // Breath padding layout spacing
                 await new Promise(resolve => setTimeout(resolve, 150));
             }
         }
@@ -830,41 +725,18 @@
         function speakText(text) {
             if (!window.speechSynthesis) return;
             window.speechSynthesis.cancel();
-
-            const pureStringText = text.replace(/\*/g, '');
-            const utterance = new SpeechSynthesisUtterance(pureStringText);
-            
-            utterance.rate = 1.05;
-            utterance.pitch = 1.02;
+            const utterance = new SpeechSynthesisUtterance(text.replace(/\*/g, ''));
+            utterance.rate = 1.05; utterance.pitch = 1.02;
             
             const voices = window.speechSynthesis.getVoices();
-            const chosenVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google US English') || v.lang.startsWith('en'));
+            const chosenVoice = voices.find(v => v.name.includes('Female') || v.lang.startsWith('en'));
             if(chosenVoice) utterance.voice = chosenVoice;
 
-            utterance.onstart = () => {
-                isSpeaking = true;
-                audioWave.classList.add('active');
-                lessonPanel.classList.add('speaking-glow');
-            };
-            
-            utterance.onend = () => {
-                isSpeaking = false;
-                audioWave.classList.remove('active');
-                lessonPanel.classList.remove('speaking-glow');
-            };
-
-            utterance.onerror = () => {
-                isSpeaking = false;
-                audioWave.classList.remove('active');
-                lessonPanel.classList.remove('speaking-glow');
-            };
-
+            utterance.onstart = () => { isSpeaking = true; audioWave.classList.add('active'); lessonPanel.classList.add('speaking-glow'); };
+            utterance.onend = () => { isSpeaking = false; audioWave.classList.remove('active'); lessonPanel.classList.remove('speaking-glow'); };
+            utterance.onerror = () => { isSpeaking = false; audioWave.classList.remove('active'); lessonPanel.classList.remove('speaking-glow'); };
             window.speechSynthesis.speak(utterance);
         }
-
-        window.speechSynthesis.onvoiceschanged = () => {
-            window.speechSynthesis.getVoices();
-        };
     </script>
 </body>
 </html>
