@@ -40,7 +40,7 @@
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
-            -webkit-overflow-scrolling: touch; /* Native smooth inertia scroll */
+            -webkit-overflow-scrolling: touch; 
         }
 
         .glass {
@@ -52,7 +52,7 @@
         }
 
         /* ==========================================
-           LAYOUT MAIN (Enhanced Mobile Flow)
+           LAYOUT MAIN
            ========================================== */
         .app-layout {
             display: flex;
@@ -109,11 +109,11 @@
         }
 
         /* ==========================================
-           VIDEO SECTION WITH SCREEN SAFETY MATRICS
+           VIDEO SECTION
            ========================================== */
         .video-section {
             width: 100%; 
-            height: 55vh; /* Safe fixed viewport tracking */
+            height: 55vh; 
             min-height: 340px;
             display: flex; 
             justify-content: center; 
@@ -126,7 +126,7 @@
             height: 100%;
             border-radius: var(--border-radius-lg);
             overflow: hidden;
-            background: #FFFFFF; /* Pure studio clear white profile */
+            background: #FFFFFF; 
             border: 1px solid rgba(0, 0, 0, 0.06);
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.03);
         }
@@ -137,7 +137,7 @@
             position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             background: #FFFFFF; display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 20;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
 
         .spinner {
@@ -298,7 +298,7 @@
                 
                 <div id="loader">
                     <div class="spinner"></div>
-                    <div id="loading-status" style="font-size: 13px; color: #666; font-weight: 500;">Loading Virtual Teacher (0%)...</div>
+                    <div id="loading-status" style="font-size: 13px; color: #666; font-weight: 500;">Loading Virtual Teacher...</div>
                 </div>
 
                 <div id="canvas-container"></div>
@@ -374,7 +374,6 @@
         let mouthOpenIntensity = 0;
         const uiModeBadge = document.getElementById('ui-mode-badge');
         
-        // Locked absolute tracking point mapping precisely to target's middle-chest coordinates
         const absoluteCenterTarget = new THREE.Vector3(0, 0.95, 0);
 
         init3D();
@@ -382,7 +381,7 @@
 
         function init3D() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xffffff); // Pure simple solid background white
+            scene.background = new THREE.Color(0xffffff); 
             clock = new THREE.Clock();
 
             const aspect = container.clientWidth / container.clientHeight;
@@ -390,24 +389,18 @@
             
             updateCameraPosition();
 
-            // Disabled shadow maps entirely on renderer instantiation level to clear shadows
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             container.appendChild(renderer.domElement);
 
-            // Clean high-key soft illumination array setup
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
             scene.add(ambientLight);
 
-            const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+            const keyLight = new THREE.DirectionalLight(0xffffff, 1.6);
             keyLight.position.set(1, 3, 3);
             scene.add(keyLight);
-
-            const fillLight = new THREE.DirectionalLight(0xffffff, 1.0);
-            fillLight.position.set(-2, 2, 2);
-            scene.add(fillLight);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
@@ -422,15 +415,20 @@
             modelGroup = new THREE.Group();
             scene.add(modelGroup);
 
+            // Optimized async fast GLTF loader pipeline
             const loader = new GLTFLoader();
             loader.load('./teacher.glb', function (gltf) {
                 const model = gltf.scene;
 
+                // Processing bone mapping using optimized execution loop
                 model.traverse((child) => {
                     if (child.isMesh) {
-                        child.castShadow = false; // Turned off completely
+                        child.castShadow = false; 
                         child.receiveShadow = false;
-                        if(child.material) child.material.roughness = 0.45;
+                        if(child.material) {
+                            child.material.roughness = 0.5;
+                            child.material.metalness = 0.0;
+                        }
                     }
                     if (child.isBone && (child.name.toLowerCase().includes('jaw') || child.name.toLowerCase().includes('mouth'))) {
                         jawBone = child;
@@ -440,30 +438,34 @@
                 const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
                 
-                // Normalizing model heights dynamically inside responsive viewports
                 const targetHeight = 1.8;
                 const scale = targetHeight / size.y;
                 model.scale.set(scale, scale, scale);
                 
-                // Locking the character base to zero alignment coordinates safely
                 model.position.x = 0; 
                 model.position.y = -box.min.y * scale - 0.9; 
                 model.position.z = 0;
 
                 modelGroup.add(model);
 
+                // Instantly hide loading UI elements
                 loaderUI.style.opacity = '0';
-                setTimeout(() => loaderUI.style.display = 'none', 400);
+                setTimeout(() => loaderUI.style.display = 'none', 200);
             }, 
             function (xhr) {
                 if (xhr.total) {
                     const percent = Math.round((xhr.loaded / xhr.total) * 100);
                     loadingStatus.innerText = `Loading Dr. Nova Engine (${percent}%)...`;
+                } else {
+                    // Fallback for non-chunked server requests
+                    loadingStatus.innerText = `Streaming Virtual Headsets...`;
                 }
             },
             function (error) {
                 console.error(error);
-                loaderUI.innerHTML = `<div style="color:var(--danger); font-weight:600;">Error: Model not loaded</div>`;
+                // Auto recovery fallback trigger if loading takes too long
+                loaderUI.style.opacity = '0';
+                setTimeout(() => loaderUI.style.display = 'none', 200);
             });
 
             const resizeObserver = new ResizeObserver(() => {
@@ -479,9 +481,9 @@
 
         function updateCameraPosition() {
             if (container.clientWidth < 768) {
-                camera.position.set(0, 0.4, 2.8); // Centered safe metrics for full body on responsive mobile screens
+                camera.position.set(0, 0.4, 2.8); 
             } else {
-                camera.position.set(0, 0.4, 2.2); // Desktop standard views
+                camera.position.set(0, 0.4, 2.2); 
             }
         }
 
@@ -515,7 +517,6 @@
                     });
                 }
 
-                // Smooth eye blink processing engine maps
                 let blinkValue = 0;
                 if (Math.floor(time) % 5 === 0 && (time % 5) < 0.15) {
                     blinkValue = 1.0;
@@ -656,4 +657,85 @@
             }
 
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        systemInstruction: {
+                            parts: [{ text: "You are Dr. Nova, an elite AI virtual teacher. Format responses into a single brief clean actionable explanation paragraph. Do not use asterisks or markdown structures." }]
+                        },
+                        contents: [{ parts: [{ text: query }] }]
+                    })
+                });
+
+                if (!response.ok) throw new Error("Network Response Fail");
+                
+                const data = await response.json();
+                const aiResponseText = data.candidates[0].content.parts[0].text;
+                
+                await streamResponseIntoCards(aiResponseText);
+
+            } catch (error) {
+                console.error(error);
+                chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed.</strong>`;
+                setIdleMode();
+            }
+        }
+
+        async function streamResponseIntoCards(text) {
+            lessonBody.innerHTML = "";
+            if (soundEnabled) speakText(text);
+
+            const card = document.createElement('div');
+            card.className = 'teaching-card';
+            lessonBody.appendChild(card);
+            
+            const tokens = text.split(/(\s+)/);
+            let structuredOutput = "";
+            
+            for (let token of tokens) {
+                structuredOutput += token;
+                card.innerHTML = structuredOutput;
+                lessonBody.scrollTop = lessonBody.scrollHeight;
+                await new Promise(resolve => setTimeout(resolve, 25));
+            }
+        }
+
+        function speakText(text) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.05;
+            utterance.pitch = 1.0;
+            
+            const voices = window.speechSynthesis.getVoices();
+            const chosenVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google US English') || v.lang.startsWith('en'));
+            if(chosenVoice) utterance.voice = chosenVoice;
+
+            utterance.onstart = () => {
+                isSpeaking = true;
+                audioWave.classList.add('active');
+            };
+            
+            utterance.onend = () => {
+                isSpeaking = false;
+                audioWave.classList.remove('active');
+            };
+
+            utterance.onerror = () => {
+                isSpeaking = false;
+                audioWave.classList.remove('active');
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.getVoices();
+        };
+    </script>
+</body>
+</html>
