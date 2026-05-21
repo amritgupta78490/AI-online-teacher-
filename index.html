@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Teacher - Virtual Classroom</title>
+    <title>Mr. Amrit - AI Teacher</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <style>
         /* ==========================================
            GLOBAL & VARIABLES
@@ -26,16 +26,14 @@
         }
 
         * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+            margin: 0; padding: 0; box-sizing: border-box;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
 
         body {
             background-color: var(--bg-color);
-            background-image: 
+            background-image:
                 radial-gradient(circle at 15% 50%, rgba(0, 102, 204, 0.06), transparent 35%),
                 radial-gradient(circle at 85% 30%, rgba(0, 204, 255, 0.06), transparent 35%);
             color: var(--text-main);
@@ -54,26 +52,18 @@
         }
 
         /* ==========================================
-           LAYOUT MAIN
+           LAYOUT
            ========================================== */
         .app-layout {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            max-width: 1300px;
-            margin: 0 auto;
-            padding: 20px;
-            min-height: 100vh;
-            gap: 20px;
+            display: flex; flex-direction: column;
+            width: 100%; max-width: 1300px;
+            margin: 0 auto; padding: 20px;
+            min-height: 100vh; gap: 20px;
         }
 
         header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 24px;
-            border-radius: var(--border-radius-lg);
-            z-index: 10;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 24px; border-radius: var(--border-radius-lg); z-index: 10;
         }
 
         .header-left { display: flex; align-items: center; gap: 12px; }
@@ -82,8 +72,7 @@
             display: flex; align-items: center; gap: 6px;
             background: rgba(255, 59, 48, 0.1); color: var(--danger);
             padding: 4px 12px; border-radius: 20px;
-            font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
-            text-transform: uppercase;
+            font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
         }
 
         .live-dot {
@@ -92,67 +81,61 @@
         }
 
         @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(255, 59, 48, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+            0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255,59,48,0.7); }
+            70%  { transform: scale(1);    box-shadow: 0 0 0 6px rgba(255,59,48,0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255,59,48,0); }
         }
 
         .teacher-info h1 { font-size: 18px; font-weight: 600; }
-        .teacher-info p { font-size: 13px; color: var(--text-muted); }
-
+        .teacher-info p  { font-size: 13px; color: var(--text-muted); }
         .header-right { display: flex; align-items: center; gap: 12px; }
-        
+
         .mode-indicator {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--accent-color);
-            background: var(--accent-glow);
-            padding: 6px 12px;
-            border-radius: 12px;
-            transition: var(--transition);
+            font-size: 12px; font-weight: 600; color: var(--accent-color);
+            background: var(--accent-glow); padding: 6px 12px;
+            border-radius: 12px; transition: var(--transition);
         }
 
         /* ==========================================
-           STRICT 16:9 CLASSROOM VIDEO BOX
+           16:9 VIDEO BOX — ALL CONTENT INSIDE
            ========================================== */
         .video-section {
             width: 100%; display: flex; justify-content: center; align-items: center;
         }
 
+        /* The 16:9 box — everything (avatar + text panel) lives inside this */
         .canvas-wrapper {
-            position: relative; width: 100%; max-width: 1100px;
-            aspect-ratio: 16 / 9; /* Proper landscape frame constraint */
+            position: relative;
+            width: 100%;
+            max-width: 1100px;
+            aspect-ratio: 16 / 9;
             border-radius: var(--border-radius-lg);
             overflow: hidden;
             background: linear-gradient(135deg, #ffffff 0%, #eef0f6 100%);
-            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 24px 48px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: row;
-            transition: var(--transition);
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.9), 0 24px 48px rgba(0,0,0,0.05);
         }
 
         .canvas-wrapper:fullscreen { border-radius: 0; max-width: 100%; }
-        
-        /* Smooth shrinking container for Character on the Left */
-        #canvas-container { 
-            width: 100%; 
-            height: 100%; 
-            display: block; 
-            cursor: grab;
-            transition: width 0.7s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-        #canvas-container:active { cursor: grabbing; }
 
-        /* Animation trigger: moves character left & down scale */
-        .canvas-wrapper.teaching-mode #canvas-container {
-            width: 35%; 
+        /* Three.js canvas fills the whole box always */
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: block;
+            /* NO pointer events — camera is fixed, no drag */
+            cursor: default;
+            touch-action: none;
         }
 
+        /* ==========================================
+           LOADER
+           ========================================== */
         #loader {
             position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255,255,255,0.95); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 20;
-            transition: opacity 0.5s ease;
+            background: rgba(255,255,255,0.96);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 20; transition: opacity 0.6s ease;
         }
 
         .spinner {
@@ -163,41 +146,52 @@
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* PRESENTATION ANSWER DECK PANEL (SIDE-BY-SIDE) */
+        /* Progress bar inside loader */
+        .progress-bar-track {
+            width: 180px; height: 4px; background: #e8e8ec;
+            border-radius: 4px; overflow: hidden; margin-top: 12px;
+        }
+        .progress-bar-fill {
+            height: 100%; width: 0%; background: var(--accent-color);
+            border-radius: 4px; transition: width 0.3s ease;
+        }
+
+        /* ==========================================
+           LESSON PANEL — OVERLAID RIGHT SIDE INSIDE THE BOX
+           ========================================== */
         #lesson-panel {
-            width: 0%;
+            position: absolute;
+            top: 0; right: 0;
+            width: 0%;      /* expands to 62% on teaching mode */
             height: 100%;
-            background: rgba(255, 255, 255, 0.96);
+            background: rgba(255, 255, 255, 0.93);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border-left: 1px solid rgba(0, 0, 0, 0.06);
-            display: flex; 
-            flex-direction: column;
+            border-left: 1px solid rgba(0,0,0,0.06);
+            display: flex; flex-direction: column;
             opacity: 0;
             overflow: hidden;
-            transition: width 0.7s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+            transition: width 0.65s cubic-bezier(0.25, 1, 0.5, 1),
+                        opacity 0.4s ease;
             z-index: 10;
         }
 
         .canvas-wrapper.teaching-mode #lesson-panel {
-            width: 65%;
+            width: 62%;
             opacity: 1;
-        }
-
-        #lesson-panel.speaking-glow {
-            box-shadow: inset 15px 0 30px rgba(0, 102, 204, 0.03);
         }
 
         .lesson-header {
             padding: 14px 20px;
             border-bottom: 1px solid rgba(0,0,0,0.05);
             display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
         }
 
         .lesson-header h3 {
-            font-size: 13px; font-weight: 700;
-            color: var(--accent-color); text-transform: uppercase;
-            letter-spacing: 1px; display: flex; align-items: center; gap: 8px;
+            font-size: 13px; font-weight: 700; color: var(--accent-color);
+            text-transform: uppercase; letter-spacing: 1px;
+            display: flex; align-items: center; gap: 8px;
         }
 
         .btn-close-lesson {
@@ -206,31 +200,23 @@
             display: flex; justify-content: center; align-items: center;
             color: var(--text-muted); transition: all 0.2s;
         }
-
         .btn-close-lesson:hover { background: #e0e0e5; color: var(--text-main); }
 
         .lesson-body {
-            flex-grow: 1; padding: 16px; overflow-y: auto;
-            scroll-behavior: smooth;
+            flex-grow: 1; padding: 16px; overflow-y: auto; scroll-behavior: smooth;
         }
-
         .lesson-body::-webkit-scrollbar { width: 5px; }
         .lesson-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 10px; }
 
         .teaching-card {
-            background: #FFFFFF;
-            border-radius: 12px;
-            padding: 14px;
-            margin-bottom: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
-            border: 1px solid rgba(0,0,0,0.02);
-            font-size: 14px; line-height: 1.6;
+            background: #FFFFFF; border-radius: 12px; padding: 14px;
+            margin-bottom: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.02); font-size: 14px; line-height: 1.7;
         }
-
         .teaching-card strong { color: var(--accent-color); }
 
         /* ==========================================
-           CONTROLS & AI CHAT AREA
+           CONTROLS & CHAT — BELOW THE BOX
            ========================================== */
         .interaction-area {
             display: flex; flex-direction: column; gap: 16px;
@@ -247,14 +233,11 @@
             width: 52px; height: 52px; border-radius: 50%;
             display: flex; justify-content: center; align-items: center;
             cursor: pointer; color: var(--text-main);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
-            transition: var(--transition);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02); transition: var(--transition);
         }
-
-        .icon-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0,0,0,0.06); }
+        .icon-btn:hover  { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0,0,0,0.06); }
         .icon-btn:active { transform: translateY(0); }
         .icon-btn svg { width: 22px; height: 22px; fill: currentColor; }
-
         .icon-btn.active-state { background: var(--accent-color); color: white; }
 
         .chat-display {
@@ -271,15 +254,12 @@
 
         .waveform { display: none; align-items: center; gap: 3px; height: 12px; }
         .waveform.active { display: flex; }
-        .bar {
-            width: 3px; background-color: var(--accent-color); border-radius: 3px;
-            animation: wave 1s ease-in-out infinite;
-        }
+        .bar { width: 3px; background: var(--accent-color); border-radius: 3px; animation: wave 1s ease-in-out infinite; }
         .bar:nth-child(1) { height: 40%; animation-delay: 0.0s; }
         .bar:nth-child(2) { height: 80%; animation-delay: 0.2s; }
         .bar:nth-child(3) { height: 100%; animation-delay: 0.4s; }
         .bar:nth-child(4) { height: 60%; animation-delay: 0.6s; }
-        @keyframes wave { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+        @keyframes wave { 0%,100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
 
         .input-group {
             display: flex; gap: 12px; padding: 12px;
@@ -290,524 +270,634 @@
             flex-grow: 1; background: transparent; border: none; outline: none;
             padding: 12px 16px; font-size: 16px; color: var(--text-main);
         }
-
         .input-field::placeholder { color: var(--text-muted); }
 
         .send-btn {
             background: var(--text-main); color: white; border: none;
             padding: 14px 28px; border-radius: 24px; font-weight: 600;
-            cursor: pointer; transition: var(--transition); font-size: 15px;
-            white-space: nowrap;
+            cursor: pointer; transition: var(--transition); font-size: 15px; white-space: nowrap;
         }
-
         .send-btn:hover { background: #000; transform: scale(1.03); }
 
         /* ==========================================
-           RESPONSIVE MOBILE GRAPHICS INTERFACE
+           MOBILE RESPONSIVE
            ========================================== */
         @media (max-width: 768px) {
             .app-layout { padding: 8px; gap: 10px; }
             .canvas-wrapper { border-radius: var(--border-radius-md); }
-            header { padding: 10px; }
+            header { padding: 10px 14px; }
             .teacher-info h1 { font-size: 15px; }
             .icon-btn { width: 44px; height: 44px; }
-            .send-btn { padding: 12px 20px; font-size: 14px; }
-            
-            .canvas-wrapper.teaching-mode #canvas-container {
-                width: 40%; /* Slightly wider for clear avatar viewing on mobile layout */
-            }
-            .canvas-wrapper.teaching-mode #lesson-panel {
-                width: 60%;
-            }
+            .send-btn { padding: 12px 18px; font-size: 13px; }
+            .chat-display { min-height: 70px; max-height: 100px; padding: 14px 16px; font-size: 14px; }
+            .input-field { font-size: 14px; }
+
+            /* On mobile portrait the lesson panel takes more right-side space */
+            .canvas-wrapper.teaching-mode #lesson-panel { width: 65%; }
             .lesson-body { padding: 10px; }
             .teaching-card { font-size: 12px; padding: 10px; margin-bottom: 8px; }
+            .lesson-header { padding: 10px 14px; }
+            .lesson-header h3 { font-size: 11px; }
+        }
+
+        @media (max-width: 480px) {
+            .canvas-wrapper.teaching-mode #lesson-panel { width: 68%; }
+            .teaching-card { font-size: 11px; }
         }
     </style>
 
     <script type="importmap">
-        {
-            "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-            }
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
         }
+    }
     </script>
 </head>
 <body>
 
-    <div class="app-layout">
-        
-        <header class="glass">
-            <div class="header-left">
-                <div class="live-badge">
-                    <div class="live-dot"></div> LIVE
-                </div>
-                <div class="teacher-info">
-                    <h1>Dr. Nova</h1>
-                    <p>AI EdTech Platform</p>
-                </div>
-            </div>
-            <div class="header-right">
-                <span class="mode-indicator" id="ui-mode-badge">IDLE MODE</span>
-            </div>
-        </header>
+<div class="app-layout">
 
-        <section class="video-section">
-            <div class="canvas-wrapper" id="video-wrapper">
-                
-                <div id="loader">
-                    <div class="spinner"></div>
-                    <div id="loading-status" style="font-size: 14px; color: #333; font-weight: 600;">Initializing AI Engine (0%)...</div>
-                </div>
+    <header class="glass">
+        <div class="header-left">
+            <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+            <div class="teacher-info">
+                <h1>Mr. Amrit</h1>
+                <p>AI EdTech Platform</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <span class="mode-indicator" id="ui-mode-badge">IDLE MODE</span>
+        </div>
+    </header>
 
-                <div id="canvas-container"></div>
-                
-                <div id="lesson-panel">
-                    <div class="lesson-header">
-                        <h3><div class="live-dot" style="background:var(--accent-color);"></div> AI Explanation</h3>
-                        <button class="btn-close-lesson" id="btn-close-lesson" title="Back to Idle Mode">&times;</button>
-                    </div>
-                    <div class="lesson-body" id="lesson-body"></div>
+    <section class="video-section">
+        <!-- 16:9 box — avatar + lesson panel both live INSIDE this -->
+        <div class="canvas-wrapper" id="video-wrapper">
+
+            <!-- Loader overlay -->
+            <div id="loader">
+                <div class="spinner"></div>
+                <div id="loading-status" style="font-size:14px;color:#333;font-weight:600;">
+                    Initializing AI Engine...
+                </div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" id="progress-fill"></div>
                 </div>
             </div>
-        </section>
 
-        <section class="interaction-area">
-            
-            <div class="controls-bar glass">
-                <button class="icon-btn" id="btn-fullscreen" title="Fullscreen Class">
-                    <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-                </button>
-                <button class="icon-btn active-state" id="btn-rotate" title="Toggle Auto-Rotate">
-                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" opacity="0"/><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5s2.24-5 5-5v3l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.44-2.43l1.41 1.41c.91-1.16 1.46-2.51 1.63-3.9h-2.02c-.14.87-.48 1.72-1.02 2.49z"/></svg>
-                </button>
-                <button class="icon-btn active-state" id="btn-sound" title="Toggle AI Voice">
-                    <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-                </button>
-            </div>
+            <!-- Three.js renders here — full 100% width/height of the box always -->
+            <div id="canvas-container"></div>
 
-            <div class="chat-display glass">
-                <div class="ai-label">
-                    Status 
-                    <div class="waveform" id="audio-wave">
-                        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                    </div>
+            <!-- Answer panel slides in from the right INSIDE the 16:9 box -->
+            <div id="lesson-panel">
+                <div class="lesson-header">
+                    <h3><div class="live-dot" style="background:var(--accent-color);animation:pulse 2s infinite;"></div> AI Explanation</h3>
+                    <button class="btn-close-lesson" id="btn-close-lesson" title="Back to Idle">&times;</button>
                 </div>
-                <p id="chat-text" style="color: var(--text-muted);">Classroom initialized. Awaiting questions...</p>
+                <div class="lesson-body" id="lesson-body"></div>
             </div>
 
-            <div class="input-group glass">
-                <button class="icon-btn" id="btn-mic" title="Voice Input">
-                    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
-                </button>
-                <input type="text" class="input-field" id="chat-input" placeholder="Ask anything about science, history, coding...">
-                <button class="send-btn" id="btn-send">Ask Teacher</button>
+        </div>
+    </section>
+
+    <section class="interaction-area">
+
+        <div class="controls-bar glass">
+            <button class="icon-btn" id="btn-fullscreen" title="Fullscreen">
+                <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+            </button>
+            <button class="icon-btn active-state" id="btn-rotate" title="Auto Rotate">
+                <svg viewBox="0 0 24 24"><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5s2.24-5 5-5v3l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.44-2.43l1.41 1.41c.91-1.16 1.46-2.51 1.63-3.9h-2.02c-.14.87-.48 1.72-1.02 2.49z"/></svg>
+            </button>
+            <button class="icon-btn active-state" id="btn-sound" title="Toggle Voice">
+                <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            </button>
+        </div>
+
+        <div class="chat-display glass">
+            <div class="ai-label">
+                Status
+                <div class="waveform" id="audio-wave">
+                    <div class="bar"></div><div class="bar"></div>
+                    <div class="bar"></div><div class="bar"></div>
+                </div>
             </div>
+            <p id="chat-text" style="color:var(--text-muted);">Classroom initialized. Awaiting questions...</p>
+        </div>
 
-        </section>
-    </div>
+        <div class="input-group glass">
+            <button class="icon-btn" id="btn-mic" title="Voice Input">
+                <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
+            </button>
+            <input type="text" class="input-field" id="chat-input" placeholder="Ask anything about science, history, coding...">
+            <button class="send-btn" id="btn-send">Ask Teacher</button>
+        </div>
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    </section>
+</div>
 
-        /* ==========================================
-           IMPORTANT: API KEY SYSTEM CONFIGURATION
-           ========================================== */
-        const GEMINI_API_KEY = "PASTE_YOUR_API_KEY_HERE";
+<script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        let scene, camera, renderer, controls, clock, modelGroup;
-        const container = document.getElementById('canvas-container');
-        const wrapper = document.getElementById('video-wrapper');
-        const loaderUI = document.getElementById('loader');
-        const loadingStatus = document.getElementById('loading-status');
+    /* ============================================================
+       ★ API KEY — PASTE YOUR GEMINI KEY HERE
+       ============================================================ */
+    const GEMINI_API_KEY = "PASTE_YOUR_API_KEY_HERE";
+    /* ============================================================ */
 
-        let isTeachingMode = false;
-        let isSpeaking = false;
-        const uiModeBadge = document.getElementById('ui-mode-badge');
-        
-        // Strict focus point matching upper chest/neck boundary to force beautiful face framing
-        const currentCamTarget = new THREE.Vector3(0, 1.45, 0);
+    // ─── DOM refs ────────────────────────────────────────────────
+    const container    = document.getElementById('canvas-container');
+    const wrapper      = document.getElementById('video-wrapper');
+    const loaderUI     = document.getElementById('loader');
+    const loadingStatus = document.getElementById('loading-status');
+    const progressFill  = document.getElementById('progress-fill');
+    const uiModeBadge  = document.getElementById('ui-mode-badge');
 
-        init3D();
+    // ─── Three.js globals ────────────────────────────────────────
+    let scene, camera, renderer, clock, modelGroup;
+    let mixer = null;  // animation mixer if model has animations
+
+    // ─── State ───────────────────────────────────────────────────
+    let isTeachingMode = false;
+    let isSpeaking     = false;
+    let autoRotate     = true;
+    let modelReady     = false;
+
+    // After model loads we store the computed "nice" camera params:
+    // These are recalculated from the actual bounding box.
+    let idleCamPos    = new THREE.Vector3(0, 1.5, 2.0);
+    let idleTarget    = new THREE.Vector3(0, 1.2, 0);
+    let teachCamPos   = new THREE.Vector3(-0.35, 1.5, 2.0);
+    let teachTarget   = new THREE.Vector3(-0.15, 1.2, 0);
+
+    // Smooth lerp targets
+    const camPos    = new THREE.Vector3();
+    const camLook   = new THREE.Vector3();
+
+    // ─── Init ────────────────────────────────────────────────────
+    init3D();
+
+    function init3D() {
+        scene = new THREE.Scene();
+        scene.background = null;
+        clock = new THREE.Clock();
+
+        const w = container.clientWidth  || 640;
+        const h = container.clientHeight || 360;
+
+        // ── Camera ──
+        camera = new THREE.PerspectiveCamera(38, w / h, 0.01, 100);
+        camera.position.copy(idleCamPos);
+        camPos.copy(idleCamPos);
+        camLook.copy(idleTarget);
+
+        // ── Renderer ──
+        renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+            powerPreference: 'high-performance'
+        });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(w, h);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+        renderer.outputColorSpace  = THREE.SRGBColorSpace;
+        renderer.toneMapping       = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
+        container.appendChild(renderer.domElement);
+
+        // ── Lights ──
+        // Ambient — soft base
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+        // Key light — front-right top (simulates studio key)
+        const keyLight = new THREE.DirectionalLight(0xfff8f0, 2.2);
+        keyLight.position.set(1.5, 3.5, 2.5);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.set(1024, 1024);
+        keyLight.shadow.radius = 4;
+        scene.add(keyLight);
+
+        // Fill light — front-left, cooler
+        const fillLight = new THREE.DirectionalLight(0xe8f0ff, 1.1);
+        fillLight.position.set(-2, 2, 2);
+        scene.add(fillLight);
+
+        // Rim / hair light — above-back
+        const rimLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        rimLight.position.set(0, 4, -2);
+        scene.add(rimLight);
+
+        // Face fill — very soft front bounce
+        const faceLight = new THREE.PointLight(0xfff5ee, 0.5, 4);
+        faceLight.position.set(0, 2.2, 1.5);
+        scene.add(faceLight);
+
+        // ── Load GLB ──
+        const loader = new GLTFLoader();
+        loader.load(
+            './teacher.glb',
+            onModelLoaded,
+            onLoadProgress,
+            onLoadError
+        );
+
+        // ── Resize observer ──
+        const ro = new ResizeObserver(() => {
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+            if (!cw || !ch) return;
+            camera.aspect = cw / ch;
+            camera.updateProjectionMatrix();
+            renderer.setSize(cw, ch);
+            // Recompute camera if model is ready
+            if (modelReady) computeCameraFromBBox();
+        });
+        ro.observe(container);
+
+        // ── Render loop ──
         animate3D();
-
-        function init3D() {
-            scene = new THREE.Scene();
-            scene.background = null; 
-            clock = new THREE.Clock();
-
-            const aspect = container.clientWidth / container.clientHeight;
-            camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
-            
-            const config = getResponsiveCameraConfig();
-            camera.position.copy(config.idleCam);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.outputColorSpace = THREE.SRGBColorSpace;
-            container.appendChild(renderer.domElement);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
-            scene.add(ambientLight);
-
-            const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
-            keyLight.position.set(2, 4, 3);
-            keyLight.castShadow = true;
-            scene.add(keyLight);
-
-            const fillLight = new THREE.DirectionalLight(0xebf3ff, 1.2);
-            fillLight.position.set(-3, 2, 2);
-            scene.add(fillLight);
-
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            
-            // Limit zooming distances tightly around the face area so users can't scroll to feet
-            controls.minDistance = 0.8;
-            controls.maxDistance = 3.5;
-            controls.enablePan = false;
-            controls.autoRotate = true;
-            controls.autoRotateSpeed = 0.8;
-            controls.target.copy(config.idleTarget);
-
-            modelGroup = new THREE.Group();
-            scene.add(modelGroup);
-
-            const loader = new GLTFLoader();
-            loader.load('./teacher.glb', function (gltf) {
-                const model = gltf.scene;
-
-                model.traverse((child) => {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
-                });
-
-                // Standardizing model scale to 1.7m absolute scale
-                const box = new THREE.Box3().setFromObject(model);
-                const size = box.getSize(new THREE.Vector3());
-                const targetHeight = 1.7;
-                const scale = targetHeight / size.y;
-                model.scale.set(scale, scale, scale);
-
-                const refreshedBox = new THREE.Box3().setFromObject(model);
-                const refreshedCenter = refreshedBox.getCenter(new THREE.Vector3());
-                
-                // Ground baseline locks absolute bottom to 0, ensuring head matches 1.7 top perfectly
-                model.position.x = -refreshedCenter.x;
-                model.position.y = -refreshedBox.min.y; 
-                model.position.z = -refreshedCenter.z;
-
-                modelGroup.add(model);
-
-                loaderUI.style.opacity = '0';
-                setTimeout(() => loaderUI.style.display = 'none', 500);
-            }, 
-            function (xhr) {
-                if (xhr.total) {
-                    const percent = Math.round((xhr.loaded / xhr.total) * 100);
-                    loadingStatus.innerText = `Loading Dr. Nova Engine (${percent}%)...`;
-                }
-            },
-            function (error) {
-                console.error('Error loading model:', error);
-                loaderUI.innerHTML = `<div style="color:var(--danger); font-weight:600;">Error: Could not load teacher.glb</div>`;
-            });
-
-            const resizeObserver = new ResizeObserver(() => {
-                const width = container.clientWidth;
-                const height = container.clientHeight;
-                camera.aspect = width / height;
-                camera.updateProjectionMatrix();
-                renderer.setSize(width, height);
-            });
-            resizeObserver.observe(container);
-        }
-
-        /* ==========================================
-           MATHEMATICAL CAMERA OVERRIDES - NO FEET VISIBLE
-           ========================================== */
-        function getResponsiveCameraConfig() {
-    const width = window.innerWidth;
-    const isMobile = width <= 768;
-
-    if (isMobile) {
-        return {
-            idleCam: new THREE.Vector3(0, 1.15, 1.75),
-            idleTarget: new THREE.Vector3(0, 1.15, 0),
-
-            teachCam: new THREE.Vector3(0, 1.1, 2.0),
-            teachTarget: new THREE.Vector3(0, 1.1, 0)
-        };
-    } else {
-        return {
-            idleCam: new THREE.Vector3(0, 1.2, 1.6),
-            idleTarget: new THREE.Vector3(0, 1.15, 0),
-
-            teachCam: new THREE.Vector3(0, 1.15, 1.9),
-            teachTarget: new THREE.Vector3(0, 1.1, 0)
-        };
     }
-        }
-        function animate3D() {
-            requestAnimationFrame(animate3D);
-            const time = clock.getElapsedTime();
 
-            const config = getResponsiveCameraConfig();
-            const targetCam = isTeachingMode ? config.teachCam : config.idleCam;
-            const targetLook = isTeachingMode ? config.teachTarget : config.idleTarget;
+    /* ─── GLB callbacks ─────────────────────────────────────────── */
+    function onModelLoaded(gltf) {
+        const model = gltf.scene;
 
-            camera.position.lerp(targetCam, 0.05);
-            currentCamTarget.lerp(targetLook, 0.05);
-            controls.target.copy(currentCamTarget);
-
-            if (modelGroup) {
-                if (isSpeaking) {
-                    modelGroup.position.y = (Math.sin(time * 2.5) * 0.012) - 0.003;
-                    modelGroup.rotation.y = Math.sin(time * 1.8) * 0.02;
-                } else {
-                    modelGroup.position.y = Math.sin(time * 1.1) * 0.008;
-                    modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
+        // Enable shadows on all meshes
+        model.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow    = true;
+                child.receiveShadow = true;
+                // Improve material quality
+                if (child.material) {
+                    child.material.needsUpdate = true;
                 }
             }
-
-            if (isTeachingMode) {
-                controls.autoRotate = false; 
-            } else {
-                controls.autoRotate = document.getElementById('btn-rotate').classList.contains('active-state');
-            }
-
-            controls.update();
-            renderer.render(scene, camera);
-        }
-
-        /* ==========================================
-           UI CONTROLS INTERACTION
-           ========================================== */
-        const btnRotate = document.getElementById('btn-rotate');
-        const btnFullscreen = document.getElementById('btn-fullscreen');
-        const btnSound = document.getElementById('btn-sound');
-        const btnCloseLesson = document.getElementById('btn-close-lesson');
-        
-        let soundEnabled = true;
-
-        btnRotate.addEventListener('click', () => btnRotate.classList.toggle('active-state'));
-
-        btnSound.addEventListener('click', () => {
-            soundEnabled = !soundEnabled;
-            btnSound.classList.toggle('active-state');
-            if(!soundEnabled) window.speechSynthesis.cancel();
         });
 
-        btnFullscreen.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                wrapper.requestFullscreen().catch(err => console.warn(err));
-            } else {
-                document.exitFullscreen();
-            }
-        });
+        // ── Auto-scale: normalize to 1.75 m height ──
+        const box0  = new THREE.Box3().setFromObject(model);
+        const size0 = box0.getSize(new THREE.Vector3());
+        const targetH = 1.75;
+        const scale  = targetH / size0.y;
+        model.scale.setScalar(scale);
 
-        btnCloseLesson.addEventListener('click', () => setIdleMode());
+        // ── Auto-center: place feet at y=0 ──
+        const box1   = new THREE.Box3().setFromObject(model);
+        const center = box1.getCenter(new THREE.Vector3());
+        model.position.set(-center.x, -box1.min.y, -center.z);
 
-        function setTeachingMode() {
-            isTeachingMode = true;
-            wrapper.classList.add('teaching-mode');
-            uiModeBadge.innerText = "TEACHING MODE";
-            uiModeBadge.style.background = "rgba(255, 59, 48, 0.1)";
-            uiModeBadge.style.color = "var(--danger)";
-            // Dispatch resize event manually to sync ThreeJS canvas boundaries perfectly
-            setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+        // Wrap in group for idle animation offsets
+        modelGroup = new THREE.Group();
+        modelGroup.add(model);
+        scene.add(modelGroup);
+
+        // Handle built-in animations if any
+        if (gltf.animations && gltf.animations.length) {
+            mixer = new THREE.AnimationMixer(model);
+            const clip = THREE.AnimationClip.findByName(gltf.animations, 'idle')
+                      || gltf.animations[0];
+            mixer.clipAction(clip).play();
         }
 
-        function setIdleMode() {
-            isTeachingMode = false;
-            wrapper.classList.remove('teaching-mode');
-            uiModeBadge.innerText = "IDLE MODE";
-            uiModeBadge.style.background = "var(--accent-glow)";
-            uiModeBadge.style.color = "var(--accent-color)";
-            setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
-        }
+        // Compute ideal camera framing from real bounding box
+        computeCameraFromBBox();
 
-        /* ==========================================
-           DATA INTERACTION STREAMING ENGINE
-           ========================================== */
-        const chatInput = document.getElementById('chat-input');
-        const btnSend = document.getElementById('btn-send');
-        const btnMic = document.getElementById('btn-mic');
-        const chatText = document.getElementById('chat-text');
-        const audioWave = document.getElementById('audio-wave');
-        const lessonBody = document.getElementById('lesson-body');
-        const lessonPanel = document.getElementById('lesson-panel');
+        modelReady = true;
 
-        let isListening = false;
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition;
-        
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
+        // Fade out loader
+        progressFill.style.width = '100%';
+        setTimeout(() => {
+            loaderUI.style.opacity = '0';
+            setTimeout(() => { loaderUI.style.display = 'none'; }, 600);
+        }, 300);
+    }
 
-            recognition.onstart = () => {
-                isListening = true;
-                btnMic.classList.add('active-state');
-                chatInput.placeholder = "Listening active...";
-            };
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                chatInput.value = transcript;
-                handleUserQuery(transcript);
-            };
-            recognition.onerror = () => resetMic();
-            recognition.onend = () => resetMic();
+    function onLoadProgress(xhr) {
+        if (xhr.total) {
+            const pct = Math.round((xhr.loaded / xhr.total) * 100);
+            loadingStatus.textContent = `Loading Mr. Amrit (${pct}%)...`;
+            progressFill.style.width  = pct + '%';
         } else {
-            btnMic.style.display = 'none';
+            // Fake incremental progress when total unknown
+            const cur = parseFloat(progressFill.style.width) || 0;
+            progressFill.style.width = Math.min(cur + 5, 90) + '%';
+        }
+    }
+
+    function onLoadError(err) {
+        console.error('GLB load error:', err);
+        loaderUI.innerHTML = `
+            <div style="color:var(--danger);font-weight:600;text-align:center;padding:20px;">
+                ⚠️ Could not load teacher.glb<br>
+                <span style="font-size:12px;color:#888;font-weight:400;">
+                    Make sure teacher.glb is in the same folder as this HTML file.
+                </span>
+            </div>`;
+    }
+
+    /* ─── Camera framing from actual bounding box ───────────────── */
+    function computeCameraFromBBox() {
+        if (!modelGroup) return;
+
+        const box    = new THREE.Box3().setFromObject(modelGroup);
+        const size   = box.getSize(new THREE.Vector3());
+        const height = size.y;   // model height in world units
+        const width  = size.x;
+
+        // Target = upper-chest / neck area  (top 18% from top)
+        const headY  = box.max.y;
+        const chestY = headY - height * 0.18;
+
+        // Half-body idle framing target = mid-chest
+        const targetY = headY - height * 0.28;
+
+        // Compute distance so the upper half of the model fits in view
+        // We want the top half (height * 0.5) to fill ~70% of vertical FOV
+        const fovRad     = THREE.MathUtils.degToRad(camera.fov);
+        const halfToShow = height * 0.52; // show top 52% of body
+        const dist       = (halfToShow / Math.tan(fovRad * 0.5)) * 1.05;
+
+        // Idle: centered, showing upper half
+        idleCamPos.set(0, chestY, dist);
+        idleTarget.set(0, targetY, 0);
+
+        // Teach: shift avatar slightly left (camera moves right slightly, or just offset target)
+        // Character appears on left ~35% of frame; camera stays same distance
+        teachCamPos.set(width * 0.55, chestY, dist * 1.05);
+        teachTarget.set(width * 0.25, targetY - 0.05, 0);
+
+        // Apply immediately if not yet set
+        if (!modelReady) {
+            camera.position.copy(idleCamPos);
+            camPos.copy(idleCamPos);
+            camLook.copy(idleTarget);
+            camera.lookAt(idleTarget);
+        }
+    }
+
+    /* ─── Animation loop ────────────────────────────────────────── */
+    let rotAngle = 0;
+
+    function animate3D() {
+        requestAnimationFrame(animate3D);
+        const dt   = clock.getDelta();
+        const time = clock.getElapsedTime();
+
+        // Update animation mixer
+        if (mixer) mixer.update(dt);
+
+        // Target positions
+        const tPos  = isTeachingMode ? teachCamPos : idleCamPos;
+        const tLook = isTeachingMode ? teachTarget  : idleTarget;
+
+        // Smooth camera lerp
+        camPos.lerp(tPos, 0.04);
+        camLook.lerp(tLook, 0.04);
+
+        // Auto-rotate in idle mode: orbit around y axis
+        if (autoRotate && !isTeachingMode) {
+            rotAngle += dt * 0.35; // slow orbit
+            const r   = camPos.distanceTo(tLook) || 2.0;
+            // Keep y and z offset, orbit x
+            const baseX = tLook.x;
+            const baseZ = tLook.z;
+            camera.position.set(
+                baseX + Math.sin(rotAngle) * r * 0.18 + camPos.x * 0.82,
+                camPos.y,
+                baseZ + Math.cos(rotAngle) * r * 0.04 + camPos.z * 0.96
+            );
+        } else {
+            camera.position.copy(camPos);
         }
 
-        function resetMic() {
-            isListening = false;
-            btnMic.classList.remove('active-state');
-            chatInput.placeholder = "Ask anything about science, history, coding...";
-        }
+        camera.lookAt(camLook);
 
-        btnMic.addEventListener('click', () => {
-            if (!recognition) return;
-            isListening ? recognition.stop() : recognition.start();
-        });
-
-        btnSend.addEventListener('click', () => {
-            const query = chatInput.value.trim();
-            if (query) handleUserQuery(query);
-        });
-
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const query = chatInput.value.trim();
-                if (query) handleUserQuery(query);
+        // Idle body sway
+        if (modelGroup) {
+            if (isSpeaking) {
+                // Subtle head/body nod while speaking
+                modelGroup.position.y = Math.sin(time * 3.0) * 0.008;
+                modelGroup.rotation.y = Math.sin(time * 2.2) * 0.018;
+            } else {
+                // Gentle breathing sway
+                modelGroup.position.y = Math.sin(time * 0.9) * 0.006;
+                modelGroup.rotation.y = Math.sin(time * 0.5) * 0.012;
             }
-        });
-
-        async function handleUserQuery(query) {
-            chatInput.value = "";
-            chatText.innerHTML = `<strong>You asked:</strong> ${query}`;
-            
-            setTeachingMode();
-            lessonBody.innerHTML = `
-                <div class="teaching-card" style="text-align:center; background:none; box-shadow:none; border:none;">
-                    <div class="spinner" style="margin: 0 auto 10px; width: 35px; height:35px;"></div>
-                    <span style="color:var(--text-muted); font-size:13px;">Structuring response presentation...</span>
-                </div>`;
-
-            if (!GEMINI_API_KEY || GEMINI_API_KEY === "PASTE_YOUR_API_KEY_HERE") {
-                chatText.innerHTML = `<strong style="color:var(--danger)">Configuration Error:</strong> Key missing inside code. Please edit the source file.`;
-                lessonBody.innerHTML = `<div class="teaching-card"><strong>Setup Needed:</strong> Open this file in a text editor and paste your API key inside the script block at <code>const GEMINI_API_KEY</code>.</div>`;
-                setIdleMode();
-                return;
-            }
-
-            try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-                
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        systemInstruction: {
-                            parts: [{ text: "You are Dr. Nova, an elite virtual class instructor. Break responses down into highly structural bullet points or short digestible paragraphs. Do not use random asterisks." }]
-                        },
-                        contents: [{ parts: [{ text: query }] }]
-                    })
-                });
-
-                if (!response.ok) throw new Error("Network Response Fail");
-                
-                const data = await response.json();
-                const aiResponseText = data.candidates[0].content.parts[0].text;
-                
-                await streamResponseIntoCards(aiResponseText);
-
-            } catch (error) {
-                console.error(error);
-                chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed. Check authentication keys or parameters.</strong>`;
-                setIdleMode();
-            }
         }
 
-        /* ==========================================
-           SMOOTH PRESENTATION DRIVER ENGINE
-           ========================================== */
-        async function streamResponseIntoCards(text) {
-            lessonBody.innerHTML = "";
-            
-            if (soundEnabled) speakText(text);
+        renderer.render(scene, camera);
+    }
 
-            const paragraphs = text.split('\n\n').filter(p => p.trim() !== "");
-            
-            for (let i = 0; i < paragraphs.length; i++) {
-                const card = document.createElement('div');
-                card.className = 'teaching-card';
-                lessonBody.appendChild(card);
-                
-                const tokens = paragraphs[i].split(/(\s+)/);
-                let structuredOutput = "";
-                
-                for (let token of tokens) {
-                    structuredOutput += token;
-                    card.innerHTML = structuredOutput.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                    lessonBody.scrollTop = lessonBody.scrollHeight;
-                    
-                    await new Promise(resolve => setTimeout(resolve, 30));
-                }
-                
-                await new Promise(resolve => setTimeout(resolve, 120));
-            }
-        }
+    /* ─── Teaching / Idle mode ──────────────────────────────────── */
+    function setTeachingMode() {
+        isTeachingMode = true;
+        wrapper.classList.add('teaching-mode');
+        uiModeBadge.textContent = 'TEACHING MODE';
+        uiModeBadge.style.background = 'rgba(255,59,48,0.1)';
+        uiModeBadge.style.color      = 'var(--danger)';
+    }
 
-        function speakText(text) {
-            if (!window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
+    function setIdleMode() {
+        isTeachingMode = false;
+        wrapper.classList.remove('teaching-mode');
+        uiModeBadge.textContent = 'IDLE MODE';
+        uiModeBadge.style.background = 'var(--accent-glow)';
+        uiModeBadge.style.color      = 'var(--accent-color)';
+        window.speechSynthesis && window.speechSynthesis.cancel();
+        isSpeaking = false;
+        audioWave.classList.remove('active');
+    }
 
-            const pureStringText = text.replace(/\*/g, '');
-            const utterance = new SpeechSynthesisUtterance(pureStringText);
-            
-            utterance.rate = 1.05;
-            utterance.pitch = 1.02;
-            
-            const voices = window.speechSynthesis.getVoices();
-            const chosenVoice = voices.find(v => v.name.includes('Female') || v.lang.startsWith('en'));
-            if(chosenVoice) utterance.voice = chosenVoice;
+    /* ─── UI Controls ───────────────────────────────────────────── */
+    const btnRotate     = document.getElementById('btn-rotate');
+    const btnFullscreen = document.getElementById('btn-fullscreen');
+    const btnSound      = document.getElementById('btn-sound');
+    const btnClose      = document.getElementById('btn-close-lesson');
+    let soundEnabled    = true;
 
-            utterance.onstart = () => {
-                isSpeaking = true;
-                audioWave.classList.add('active');
-                lessonPanel.classList.add('speaking-glow');
-            };
-            
-            utterance.onend = () => {
-                isSpeaking = false;
-                audioWave.classList.remove('active');
-                lessonPanel.classList.remove('speaking-glow');
-            };
+    btnRotate.addEventListener('click', () => {
+        autoRotate = !autoRotate;
+        btnRotate.classList.toggle('active-state', autoRotate);
+    });
 
-            utterance.onerror = () => {
-                isSpeaking = false;
-                audioWave.classList.remove('active');
-                lessonPanel.classList.remove('speaking-glow');
-            };
+    btnSound.addEventListener('click', () => {
+        soundEnabled = !soundEnabled;
+        btnSound.classList.toggle('active-state', soundEnabled);
+        if (!soundEnabled) window.speechSynthesis && window.speechSynthesis.cancel();
+    });
 
-            window.speechSynthesis.speak(utterance);
-        }
+    btnFullscreen.addEventListener('click', () => {
+        if (!document.fullscreenElement)
+            wrapper.requestFullscreen().catch(e => console.warn(e));
+        else
+            document.exitFullscreen();
+    });
 
-        window.speechSynthesis.onvoiceschanged = () => {
-            window.speechSynthesis.getVoices();
+    btnClose.addEventListener('click', setIdleMode);
+
+    /* ─── Chat / Query ──────────────────────────────────────────── */
+    const chatInput  = document.getElementById('chat-input');
+    const btnSend    = document.getElementById('btn-send');
+    const btnMic     = document.getElementById('btn-mic');
+    const chatText   = document.getElementById('chat-text');
+    const audioWave  = document.getElementById('audio-wave');
+    const lessonBody = document.getElementById('lesson-body');
+    const lessonPanel = document.getElementById('lesson-panel');
+
+    let isListening = false;
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+
+    if (SpeechRec) {
+        recognition = new SpeechRec();
+        recognition.continuous     = false;
+        recognition.interimResults = false;
+        recognition.lang           = 'en-US';
+
+        recognition.onstart = () => {
+            isListening = true;
+            btnMic.classList.add('active-state');
+            chatInput.placeholder = 'Listening...';
         };
-    </script>
+        recognition.onresult = e => {
+            const t = e.results[0][0].transcript;
+            chatInput.value = t;
+            handleUserQuery(t);
+        };
+        recognition.onerror = resetMic;
+        recognition.onend   = resetMic;
+    } else {
+        btnMic.style.display = 'none';
+    }
+
+    function resetMic() {
+        isListening = false;
+        btnMic.classList.remove('active-state');
+        chatInput.placeholder = 'Ask anything about science, history, coding...';
+    }
+
+    btnMic.addEventListener('click', () => {
+        if (!recognition) return;
+        isListening ? recognition.stop() : recognition.start();
+    });
+
+    btnSend.addEventListener('click', () => {
+        const q = chatInput.value.trim();
+        if (q) handleUserQuery(q);
+    });
+
+    chatInput.addEventListener('keypress', e => {
+        if (e.key === 'Enter') {
+            const q = chatInput.value.trim();
+            if (q) handleUserQuery(q);
+        }
+    });
+
+    async function handleUserQuery(query) {
+        chatInput.value = '';
+        chatText.innerHTML = `<strong>You asked:</strong> ${query}`;
+        setTeachingMode();
+
+        lessonBody.innerHTML = `
+            <div class="teaching-card" style="text-align:center;background:none;box-shadow:none;border:none;">
+                <div class="spinner" style="margin:0 auto 10px;width:32px;height:32px;"></div>
+                <span style="color:var(--text-muted);font-size:13px;">Preparing answer...</span>
+            </div>`;
+
+        if (!GEMINI_API_KEY || GEMINI_API_KEY === 'PASTE_YOUR_API_KEY_HERE') {
+            chatText.innerHTML = `<strong style="color:var(--danger)">Setup needed:</strong> Open this file and paste your Gemini API key at <code>const GEMINI_API_KEY</code>.`;
+            lessonBody.innerHTML = `<div class="teaching-card"><strong>How to fix:</strong> Edit this HTML file, find <code>const GEMINI_API_KEY</code> near the top of the &lt;script&gt; block, and replace the placeholder with your actual key.</div>`;
+            return;
+        }
+
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    systemInstruction: {
+                        parts: [{ text: 'You are Mr. Amrit, an elite virtual class instructor. Break responses into short, clear paragraphs or bullet points. Be concise and educational. Do not use random asterisks.' }]
+                    },
+                    contents: [{ parts: [{ text: query }] }]
+                })
+            });
+
+            if (!res.ok) throw new Error(`API error ${res.status}`);
+            const data = await res.json();
+            const text = data.candidates[0].content.parts[0].text;
+            await streamResponseIntoCards(text);
+
+        } catch (err) {
+            console.error(err);
+            chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed.</strong> Check your API key or network.`;
+            lessonBody.innerHTML = `<div class="teaching-card" style="color:var(--danger)">Could not reach Gemini API. Please check your key and internet connection.</div>`;
+        }
+    }
+
+    /* ─── Streaming cards ───────────────────────────────────────── */
+    async function streamResponseIntoCards(text) {
+        lessonBody.innerHTML = '';
+        if (soundEnabled) speakText(text);
+
+        const paragraphs = text.split('\n\n').filter(p => p.trim());
+
+        for (const para of paragraphs) {
+            const card = document.createElement('div');
+            card.className = 'teaching-card';
+            lessonBody.appendChild(card);
+
+            const tokens = para.split(/(\s+)/);
+            let out = '';
+            for (const tok of tokens) {
+                out += tok;
+                card.innerHTML = out.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                lessonBody.scrollTop = lessonBody.scrollHeight;
+                await new Promise(r => setTimeout(r, 28));
+            }
+            await new Promise(r => setTimeout(r, 110));
+        }
+    }
+
+    /* ─── Voice ─────────────────────────────────────────────────── */
+    function speakText(text) {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+
+        const clean = text.replace(/\*/g, '');
+        const utt   = new SpeechSynthesisUtterance(clean);
+        utt.rate    = 1.0;
+        utt.pitch   = 1.0;
+        utt.volume  = 1.0;
+
+        // Pick best English voice
+        const voices = window.speechSynthesis.getVoices();
+        const best = voices.find(v => /Google.*English|Samantha|Daniel|Karen/i.test(v.name))
+                  || voices.find(v => v.lang === 'en-US' && v.localService)
+                  || voices.find(v => v.lang.startsWith('en'));
+        if (best) utt.voice = best;
+
+        utt.onstart = () => {
+            isSpeaking = true;
+            audioWave.classList.add('active');
+            lessonPanel.style.boxShadow = 'inset 10px 0 25px rgba(0,102,204,0.04)';
+        };
+        utt.onend = utt.onerror = () => {
+            isSpeaking = false;
+            audioWave.classList.remove('active');
+            lessonPanel.style.boxShadow = '';
+        };
+
+        window.speechSynthesis.speak(utt);
+    }
+
+    // Preload voices
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+
+</script>
 </body>
 </html>
