@@ -372,9 +372,10 @@
         let isTeachingMode = false;
         let isSpeaking = false;
         let mouthOpenIntensity = 0;
-        const uiModeBadge = document.getElementById('ui-mode-badge');
         
-        const absoluteCenterTarget = new THREE.Vector3(0, 0.95, 0);
+        // Changed target to look perfectly at the center instead of high up
+        const absoluteCenterTarget = new THREE.Vector3(0, 0, 0);
+        const uiModeBadge = document.getElementById('ui-mode-badge');
 
         init3D();
         animate3D();
@@ -406,7 +407,7 @@
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
             controls.minDistance = 1.2;
-            controls.maxDistance = 5;
+            controls.maxDistance = 12; // Increased max distance to allow manual zoom out
             controls.enablePan = false;
             controls.autoRotate = true;
             controls.autoRotateSpeed = 0.4;
@@ -435,16 +436,24 @@
                     }
                 });
 
+                // --- IMPROVED CENTERING AND SCALING ---
                 const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
                 
-                const targetHeight = 1.8;
+                // Scale model to standard visible height (2.2 units)
+                const targetHeight = 2.2;
                 const scale = targetHeight / size.y;
                 model.scale.set(scale, scale, scale);
                 
-                model.position.x = 0; 
-                model.position.y = -box.min.y * scale - 0.9; 
-                model.position.z = 0;
+                // Re-calculate bounding box after scaling to find the exact center point
+                const scaledBox = new THREE.Box3().setFromObject(model);
+                const center = scaledBox.getCenter(new THREE.Vector3());
+                
+                // Automatically center the model properly at (0,0,0)
+                model.position.x = -center.x; 
+                model.position.y = -center.y; 
+                model.position.z = -center.z;
+                // ---------------------------------------
 
                 modelGroup.add(model);
 
@@ -479,13 +488,17 @@
             resizeObserver.observe(container);
         }
 
+        // --- IMPROVED CAMERA ZOOM POSITIONING ---
         function updateCameraPosition() {
             if (container.clientWidth < 768) {
-                camera.position.set(0, 0.4, 2.8); 
+                // Zoomed out more on mobile
+                camera.position.set(0, 0, 4.5); 
             } else {
-                camera.position.set(0, 0.4, 2.2); 
+                // Zoomed out more on desktop
+                camera.position.set(0, 0, 3.8); 
             }
         }
+        // ----------------------------------------
 
         function animate3D() {
             requestAnimationFrame(animate3D);
