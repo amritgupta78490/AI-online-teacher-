@@ -11,18 +11,18 @@
            GLOBAL & VARIABLES
            ========================================== */
         :root {
-            --bg-color: #F7F7F9;
-            --surface-color: rgba(255, 255, 255, 0.7);
+            --bg-color: #FFFFFF;
+            --surface-color: rgba(255, 255, 255, 0.85);
             --surface-solid: #FFFFFF;
             --text-main: #1D1D1F;
             --text-muted: #86868B;
             --accent-color: #0066CC;
-            --accent-glow: rgba(0, 102, 204, 0.15);
+            --accent-glow: rgba(0, 102, 204, 0.1) ;
             --danger: #FF3B30;
-            --border-radius-lg: 28px;
+            --border-radius-lg: 24px;
             --border-radius-md: 16px;
             --border-radius-sm: 12px;
-            --transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            --transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         * {
@@ -35,45 +35,42 @@
 
         body {
             background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(0, 102, 204, 0.06), transparent 35%),
-                radial-gradient(circle at 85% 30%, rgba(0, 204, 255, 0.06), transparent 35%);
             color: var(--text-main);
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch; /* Native smooth inertia scroll */
         }
 
         .glass {
             background: var(--surface-color);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
         }
 
         /* ==========================================
-           LAYOUT MAIN (Fixed Screen Fitting)
+           LAYOUT MAIN (Enhanced Mobile Flow)
            ========================================== */
         .app-layout {
             display: flex;
             flex-direction: column;
             width: 100%;
-            max-width: 1300px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 16px;
-            height: 100vh;
-            gap: 14px;
+            box-sizing: border-box;
+            gap: 16px;
         }
 
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 24px;
+            padding: 14px 20px;
             border-radius: var(--border-radius-lg);
-            flex-shrink: 0;
             z-index: 10;
         }
 
@@ -83,8 +80,7 @@
             display: flex; align-items: center; gap: 6px;
             background: rgba(255, 59, 48, 0.1); color: var(--danger);
             padding: 4px 12px; border-radius: 20px;
-            font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
-            text-transform: uppercase;
+            font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
         }
 
         .live-dot {
@@ -98,28 +94,27 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
         }
 
-        .teacher-info h1 { font-size: 18px; font-weight: 600; }
-        .teacher-info p { font-size: 13px; color: var(--text-muted); }
+        .teacher-info h1 { font-size: 16px; font-weight: 600; }
+        .teacher-info p { font-size: 12px; color: var(--text-muted); }
 
         .header-right { display: flex; align-items: center; gap: 12px; }
         
         .mode-indicator {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--accent-color);
             background: var(--accent-glow);
             padding: 6px 12px;
             border-radius: 12px;
-            transition: var(--transition);
         }
 
         /* ==========================================
-           VIDEO SECTION WITH FULL FRAME FITTING
+           VIDEO SECTION WITH SCREEN SAFETY MATRICS
            ========================================== */
         .video-section {
             width: 100%; 
-            flex: 1;
-            min-height: 0; 
+            height: 55vh; /* Safe fixed viewport tracking */
+            min-height: 340px;
             display: flex; 
             justify-content: center; 
             align-items: center;
@@ -131,50 +126,43 @@
             height: 100%;
             border-radius: var(--border-radius-lg);
             overflow: hidden;
-            background: linear-gradient(135deg, #ffffff 0%, #f0f0f5 100%);
-            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 24px 48px rgba(0, 0, 0, 0.05);
-            transition: var(--transition);
+            background: #FFFFFF; /* Pure studio clear white profile */
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.03);
         }
-
-        .canvas-wrapper:fullscreen { border-radius: 0; }
         
-        #canvas-container { width: 100%; height: 100%; display: block; cursor: grab; }
-        #canvas-container:active { cursor: grabbing; }
+        #canvas-container { width: 100%; height: 100%; display: block; }
 
-        /* Loading Screen */
         #loader {
             position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255,255,255,0.95); display: flex; flex-direction: column;
+            background: #FFFFFF; display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 20;
             transition: opacity 0.5s ease;
         }
 
         .spinner {
-            width: 44px; height: 44px;
-            border: 4px solid #f0f0f5; border-top: 4px solid var(--accent-color);
-            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;
+            width: 36px; height: 36px;
+            border: 3px solid #f0f0f5; border-top: 3px solid var(--accent-color);
+            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px;
         }
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* Floating Explanation Overlay */
         #lesson-panel {
             position: absolute;
-            bottom: 20px; left: 50%;
-            transform: translateX(-50%) translateY(150%);
-            width: 90%;
-            max-width: 600px;
+            bottom: 16px; left: 50%;
+            transform: translateX(-50%) translateY(130%);
+            width: 92%;
+            max-width: 550px;
             border-radius: var(--border-radius-md);
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid rgba(255,255,255,0.8);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
             display: flex; flex-direction: column;
             opacity: 0;
-            transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+            transition: var(--transition);
             z-index: 10;
-            max-height: 180px;
+            max-height: 150px;
         }
 
         .canvas-wrapper.teaching-mode #lesson-panel {
@@ -182,13 +170,8 @@
             opacity: 1;
         }
 
-        #lesson-panel.speaking-glow {
-            box-shadow: 0 0 30px rgba(0, 102, 204, 0.2);
-            border-color: rgba(0, 102, 204, 0.3);
-        }
-
         .lesson-header {
-            padding: 10px 16px;
+            padding: 10px 14px;
             border-bottom: 1px solid rgba(0,0,0,0.05);
             display: flex; justify-content: space-between; align-items: center;
         }
@@ -196,67 +179,61 @@
         .lesson-header h3 {
             font-size: 11px; font-weight: 700;
             color: var(--accent-color); text-transform: uppercase;
-            letter-spacing: 1px; display: flex; align-items: center; gap: 8px;
+            display: flex; align-items: center; gap: 6px;
         }
 
         .btn-close-lesson {
-            background: #f0f0f5; border: none; width: 22px; height: 22px;
-            border-radius: 50%; font-size: 14px; cursor: pointer;
+            background: #f0f0f5; border: none; width: 20px; height: 20px;
+            border-radius: 50%; font-size: 12px; cursor: pointer;
             display: flex; justify-content: center; align-items: center;
-            color: var(--text-muted); transition: all 0.2s;
+            color: var(--text-muted);
         }
 
-        .lesson-body {
-            flex-grow: 1; padding: 14px; overflow-y: auto;
-        }
-
-        .teaching-card {
-            font-size: 14px; line-height: 1.5; color: var(--text-main);
-        }
+        .lesson-body { flex-grow: 1; padding: 12px; overflow-y: auto; }
+        .teaching-card { font-size: 13.5px; line-height: 1.5; color: var(--text-main); }
 
         /* ==========================================
            INTERACTION & CONTROLS AREA
            ========================================== */
         .interaction-area {
-            display: flex; flex-direction: column; gap: 10px;
-            max-width: 1100px; width: 100%; margin: 0 auto;
-            flex-shrink: 0;
+            display: flex; flex-direction: column; gap: 12px;
+            max-width: 900px; width: 100%; margin: 0 auto;
         }
 
         .controls-bar {
-            display: flex; justify-content: center; gap: 16px;
+            display: flex; justify-content: center; gap: 14px;
             padding: 8px; border-radius: var(--border-radius-lg);
         }
 
         .icon-btn {
-            background: var(--surface-solid); border: 1px solid rgba(0,0,0,0.04);
-            width: 46px; height: 46px; border-radius: 50%;
+            background: var(--surface-solid); border: 1px solid rgba(0,0,0,0.05);
+            width: 44px; height: 44px; border-radius: 50%;
             display: flex; justify-content: center; align-items: center;
             cursor: pointer; color: var(--text-main);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
-            transition: var(--transition);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            transition: all 0.3s;
         }
 
-        .icon-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0,0,0,0.06); }
-        .icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
-        .icon-btn.active-state { background: var(--accent-color); color: white; }
+        .icon-btn:hover { transform: translateY(-2px); }
+        .icon-btn svg { width: 18px; height: 18px; fill: currentColor; }
+        .icon-btn.active-state { background: var(--text-main); color: white; }
 
         .chat-display {
-            padding: 12px 20px; border-radius: var(--border-radius-lg);
-            min-height: 60px; max-height: 80px; overflow-y: auto;
-            font-size: 14px;
+            padding: 12px 16px; border-radius: var(--border-radius-lg);
+            min-height: 54px; max-height: 74px; overflow-y: auto;
+            font-size: 13.5px;
         }
 
         .ai-label {
-            font-size: 11px; font-weight: 700; color: var(--accent-color);
-            text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;
+            font-size: 10px; font-weight: 700; color: var(--accent-color);
+            text-transform: uppercase; margin-bottom: 2px; display: flex; align-items: center; gap: 6px;
         }
 
-        /* Voice Waveform Animation */
-        .waveform { display: none; align-items: center; gap: 3px; height: 12px; }
+        /* Waveform Animation */
+        .waveform { display: none; align-items: center; gap: 2px; height: 10px; }
         .waveform.active { display: flex; }
         .bar {
-            width: 3px; background-color: var(--accent-color); border-radius: 3px;
+            width: 2px; background-color: var(--accent-color); border-radius: 2px;
             animation: wave 1s ease-in-out infinite;
         }
         .bar:nth-child(1) { height: 40%; animation-delay: 0.0s; }
@@ -266,25 +243,25 @@
         @keyframes wave { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
 
         .input-group {
-            display: flex; gap: 12px; padding: 8px;
+            display: flex; gap: 8px; padding: 6px;
             border-radius: var(--border-radius-lg); align-items: center;
         }
 
         .input-field {
             flex-grow: 1; background: transparent; border: none; outline: none;
-            padding: 10px 16px; font-size: 15px; color: var(--text-main);
+            padding: 8px 12px; font-size: 14.5px; color: var(--text-main);
         }
 
         .send-btn {
             background: var(--text-main); color: white; border: none;
-            padding: 12px 24px; border-radius: 24px; font-weight: 600;
-            cursor: pointer; transition: var(--transition); font-size: 14px;
+            padding: 10px 20px; border-radius: 20px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s; font-size: 13px;
         }
 
         @media (max-width: 768px) {
-            .app-layout { padding: 8px; gap: 8px; }
-            .video-section { min-height: 0; }
-            #lesson-panel { width: 95%; bottom: 10px; }
+            .app-layout { padding: 12px; gap: 12px; }
+            .video-section { height: 48vh; }
+            #lesson-panel { width: 94%; bottom: 12px; }
         }
     </style>
 
@@ -321,7 +298,7 @@
                 
                 <div id="loader">
                     <div class="spinner"></div>
-                    <div id="loading-status" style="font-size: 14px; color: #333; font-weight: 600;">Initializing AI Engine (0%)...</div>
+                    <div id="loading-status" style="font-size: 13px; color: #666; font-weight: 500;">Loading Virtual Teacher (0%)...</div>
                 </div>
 
                 <div id="canvas-container"></div>
@@ -343,7 +320,7 @@
                     <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
                 </button>
                 <button class="icon-btn active-state" id="btn-rotate" title="Toggle Auto-Rotate">
-                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" opacity="0"/><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5s2.24-5 5-5v3l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.44-2.43l1.41 1.41c.91-1.16 1.46-2.51 1.63-3.9h-2.02c-.14.87-.48 1.72-1.02 2.49z"/></svg>
+                    <svg viewBox="0 0 24 24"><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5s2.24-5 5-5v3l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.44-2.43l1.41 1.41c.91-1.16 1.46-2.51 1.63-3.9h-2.02c-.14.87-.48 1.72-1.02 2.49z"/></svg>
                 </button>
                 <button class="icon-btn active-state" id="btn-sound" title="Toggle AI Voice">
                     <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
@@ -385,8 +362,7 @@
            1. THREE.JS ENVIRONMENT SETUP
            ========================================== */
         let scene, camera, renderer, controls, clock, modelGroup;
-        let jawBone = null; // Automated LipSync mapping
-        let leftEyeBone = null, rightEyeBone = null; // Organic Blinking tracking
+        let jawBone = null; 
         
         const container = document.getElementById('canvas-container');
         const wrapper = document.getElementById('video-wrapper');
@@ -398,60 +374,46 @@
         let mouthOpenIntensity = 0;
         const uiModeBadge = document.getElementById('ui-mode-badge');
         
-        // Dynamic target matching character's middle torso precisely
-        const absoluteCenterTarget = new THREE.Vector3(0, 1.1, 0);
+        // Locked absolute tracking point mapping precisely to target's middle-chest coordinates
+        const absoluteCenterTarget = new THREE.Vector3(0, 0.95, 0);
 
         init3D();
         animate3D();
 
         function init3D() {
             scene = new THREE.Scene();
-            scene.background = null; 
+            scene.background = new THREE.Color(0xffffff); // Pure simple solid background white
             clock = new THREE.Clock();
 
             const aspect = container.clientWidth / container.clientHeight;
-            camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
+            camera = new THREE.PerspectiveCamera(42, aspect, 0.1, 100);
             
-            // Adjusted position to automatically keep full-body inside mobile layouts
             updateCameraPosition();
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+            // Disabled shadow maps entirely on renderer instantiation level to clear shadows
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             container.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+            // Clean high-key soft illumination array setup
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
             scene.add(ambientLight);
 
-            const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
-            keyLight.position.set(2, 4, 4);
-            keyLight.castShadow = true;
+            const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+            keyLight.position.set(1, 3, 3);
             scene.add(keyLight);
 
-            const fillLight = new THREE.DirectionalLight(0xebf3ff, 1.4);
-            fillLight.position.set(-3, 2, 3);
+            const fillLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            fillLight.position.set(-2, 2, 2);
             scene.add(fillLight);
-
-            const rimLight = new THREE.PointLight(0x4499ff, 2.5, 10);
-            rimLight.position.set(0, 4, -4);
-            scene.add(rimLight);
-
-            const planeGeo = new THREE.PlaneGeometry(20, 20);
-            const planeMat = new THREE.ShadowMaterial({ opacity: 0.06 });
-            const plane = new THREE.Mesh(planeGeo, planeMat);
-            plane.rotation.x = -Math.PI / 2;
-            plane.position.y = 0;
-            plane.receiveShadow = true;
-            scene.add(plane);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.minDistance = 1.0;
-            controls.maxDistance = 6;
+            controls.dampingFactor = 0.08;
+            controls.minDistance = 1.2;
+            controls.maxDistance = 5;
             controls.enablePan = false;
             controls.autoRotate = true;
             controls.autoRotateSpeed = 0.4;
@@ -466,34 +428,32 @@
 
                 model.traverse((child) => {
                     if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                        if(child.material) child.material.roughness = 0.4;
+                        child.castShadow = false; // Turned off completely
+                        child.receiveShadow = false;
+                        if(child.material) child.material.roughness = 0.45;
                     }
-                    // Procedural LipSync: Automatic standard bone structure scanner lookup
                     if (child.isBone && (child.name.toLowerCase().includes('jaw') || child.name.toLowerCase().includes('mouth'))) {
                         jawBone = child;
                     }
-                    if (child.isBone && child.name.toLowerCase().includes('eyelef')) leftEyeBone = child;
-                    if (child.isBone && child.name.toLowerCase().includes('eyerigh')) rightEyeBone = child;
                 });
 
                 const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
                 
-                // Keep model beautifully structured inside viewport grids
-                const targetHeight = 1.75;
+                // Normalizing model heights dynamically inside responsive viewports
+                const targetHeight = 1.8;
                 const scale = targetHeight / size.y;
                 model.scale.set(scale, scale, scale);
                 
+                // Locking the character base to zero alignment coordinates safely
                 model.position.x = 0; 
-                model.position.y = 0; 
+                model.position.y = -box.min.y * scale - 0.9; 
                 model.position.z = 0;
 
                 modelGroup.add(model);
 
                 loaderUI.style.opacity = '0';
-                setTimeout(() => loaderUI.style.display = 'none', 500);
+                setTimeout(() => loaderUI.style.display = 'none', 400);
             }, 
             function (xhr) {
                 if (xhr.total) {
@@ -502,8 +462,8 @@
                 }
             },
             function (error) {
-                console.error('Error loading model:', error);
-                loaderUI.innerHTML = `<div style="color:var(--danger); font-weight:600;">Error: Could not load teacher.glb</div>`;
+                console.error(error);
+                loaderUI.innerHTML = `<div style="color:var(--danger); font-weight:600;">Error: Model not loaded</div>`;
             });
 
             const resizeObserver = new ResizeObserver(() => {
@@ -519,9 +479,9 @@
 
         function updateCameraPosition() {
             if (container.clientWidth < 768) {
-                camera.position.set(0, 1.1, 3.4); // Mobile layout tracking
+                camera.position.set(0, 0.4, 2.8); // Centered safe metrics for full body on responsive mobile screens
             } else {
-                camera.position.set(0, 1.2, 2.4); // Desktop layout tracking
+                camera.position.set(0, 0.4, 2.2); // Desktop standard views
             }
         }
 
@@ -533,24 +493,18 @@
 
             if (modelGroup && modelGroup.children.length > 0) {
                 if (isSpeaking) {
-                    // Fluent body breathing micro-animations
-                    modelGroup.position.y = (Math.sin(time * 3.5) * 0.006);
-                    modelGroup.rotation.y = Math.sin(time * 1.8) * 0.015;
-                    
-                    // Procedural Audio LipSync: Simulates complex human phonetic frequencies
-                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, Math.abs(Math.sin(time * 24)) * 0.25, 0.4);
+                    modelGroup.position.y = (Math.sin(time * 3.5) * 0.005);
+                    modelGroup.rotation.y = Math.sin(time * 1.5) * 0.012;
+                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, Math.abs(Math.sin(time * 22)) * 0.22, 0.4);
                 } else {
-                    // Standard idle system loops
-                    modelGroup.position.y = Math.sin(time * 1.2) * 0.005;
+                    modelGroup.position.y = Math.sin(time * 1.2) * 0.004;
                     modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
                     mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, 0, 0.2);
                 }
 
-                // Inject processing data metrics into detected bone structures natively
                 if (jawBone) {
                     jawBone.rotation.x = mouthOpenIntensity; 
                 } else {
-                    // Fallback morphological scanner mesh backup map system
                     modelGroup.traverse((child) => {
                         if (child.morphTargetInfluences && child.morphTargetDictionary) {
                             const jawOpenIdx = child.morphTargetDictionary['jawOpen'] || child.morphTargetDictionary['mouth_open'];
@@ -561,9 +515,9 @@
                     });
                 }
 
-                // Automatic organic eye blinking loops
+                // Smooth eye blink processing engine maps
                 let blinkValue = 0;
-                if (Math.floor(time) % 4 === 0 && (time % 4) < 0.15) {
+                if (Math.floor(time) % 5 === 0 && (time % 5) < 0.15) {
                     blinkValue = 1.0;
                 }
                 modelGroup.traverse((child) => {
@@ -692,7 +646,7 @@
             chatText.innerHTML = `<strong>You asked:</strong> ${query}`;
             
             setTeachingMode();
-            lessonBody.innerHTML = `<span style="color:var(--text-muted); font-size:13px;">Processing request stream...</span>`;
+            lessonBody.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Processing request stream...</span>`;
 
             if (!GEMINI_API_KEY || GEMINI_API_KEY === "PASTE_YOUR_API_KEY_HERE") {
                 chatText.innerHTML = `<strong style="color:var(--danger)">Configuration Error:</strong> Key missing inside code.`;
@@ -702,88 +656,4 @@
             }
 
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-                
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        systemInstruction: {
-                            parts: [{ text: "You are Dr. Nova, an elite AI virtual teacher. Format responses into a single brief clean actionable explanation paragraph. Do not use asterisks or markdown structures." }]
-                        },
-                        contents: [{ parts: [{ text: query }] }]
-                    })
-                });
-
-                if (!response.ok) throw new Error("Network Response Fail");
-                
-                const data = await response.json();
-                const aiResponseText = data.candidates[0].content.parts[0].text;
-                
-                await streamResponseIntoCards(aiResponseText);
-
-            } catch (error) {
-                console.error(error);
-                chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed.</strong>`;
-                setIdleMode();
-            }
-        }
-
-        async function streamResponseIntoCards(text) {
-            lessonBody.innerHTML = "";
-            if (soundEnabled) speakText(text);
-
-            const card = document.createElement('div');
-            card.className = 'teaching-card';
-            lessonBody.appendChild(card);
-            
-            const tokens = text.split(/(\s+)/);
-            let structuredOutput = "";
-            
-            for (let token of tokens) {
-                structuredOutput += token;
-                card.innerHTML = structuredOutput;
-                lessonBody.scrollTop = lessonBody.scrollHeight;
-                await new Promise(resolve => setTimeout(resolve, 30));
-            }
-        }
-
-        function speakText(text) {
-            if (!window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.05;
-            utterance.pitch = 1.0;
-            
-            const voices = window.speechSynthesis.getVoices();
-            const chosenVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google US English') || v.lang.startsWith('en'));
-            if(chosenVoice) utterance.voice = chosenVoice;
-
-            utterance.onstart = () => {
-                isSpeaking = true;
-                audioWave.classList.add('active');
-                lessonPanel.classList.add('speaking-glow');
-            };
-            
-            utterance.onend = () => {
-                isSpeaking = false;
-                audioWave.classList.remove('active');
-                lessonPanel.classList.remove('speaking-glow');
-            };
-
-            utterance.onerror = () => {
-                isSpeaking = false;
-                audioWave.classList.remove('active');
-                lessonPanel.classList.remove('speaking-glow');
-            };
-
-            window.speechSynthesis.speak(utterance);
-        }
-
-        window.speechSynthesis.onvoiceschanged = () => {
-            window.speechSynthesis.getVoices();
-        };
-    </script>
-</body>
-</html>
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?
