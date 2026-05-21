@@ -373,8 +373,9 @@
         let isSpeaking = false;
         let mouthOpenIntensity = 0;
         
-        // Changed target to look perfectly at the center instead of high up
-        const absoluteCenterTarget = new THREE.Vector3(0, 0, 0);
+        // CAMERA TARGET UPDATED: Look slightly higher (towards chest/face) 
+        // This will naturally push the character visually downwards on the screen
+        const absoluteCenterTarget = new THREE.Vector3(0, 0.5, 0);
         const uiModeBadge = document.getElementById('ui-mode-badge');
 
         init3D();
@@ -407,7 +408,7 @@
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
             controls.minDistance = 1.2;
-            controls.maxDistance = 12; // Increased max distance to allow manual zoom out
+            controls.maxDistance = 12; 
             controls.enablePan = false;
             controls.autoRotate = true;
             controls.autoRotateSpeed = 0.4;
@@ -436,7 +437,7 @@
                     }
                 });
 
-                // --- IMPROVED CENTERING AND SCALING ---
+                // --- IMPROVED CENTERING, SCALING & LOWERING ---
                 const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
                 
@@ -449,9 +450,9 @@
                 const scaledBox = new THREE.Box3().setFromObject(model);
                 const center = scaledBox.getCenter(new THREE.Vector3());
                 
-                // Automatically center the model properly at (0,0,0)
+                // Set to center, then physically lower the model's Y position by 0.5 units
                 model.position.x = -center.x; 
-                model.position.y = -center.y; 
+                model.position.y = -center.y - 0.5; // Added offset to move character down
                 model.position.z = -center.z;
                 // ---------------------------------------
 
@@ -488,14 +489,13 @@
             resizeObserver.observe(container);
         }
 
-        // --- IMPROVED CAMERA ZOOM POSITIONING ---
+        // --- IMPROVED CAMERA ZOOM & Y-POSITIONING ---
         function updateCameraPosition() {
             if (container.clientWidth < 768) {
-                // Zoomed out more on mobile
-                camera.position.set(0, 0, 4.5); 
+                // Raised camera slightly to look down better
+                camera.position.set(0, 0.5, 4.5); 
             } else {
-                // Zoomed out more on desktop
-                camera.position.set(0, 0, 3.8); 
+                camera.position.set(0, 0.5, 3.8); 
             }
         }
         // ----------------------------------------
@@ -508,11 +508,11 @@
 
             if (modelGroup && modelGroup.children.length > 0) {
                 if (isSpeaking) {
-                    modelGroup.position.y = (Math.sin(time * 3.5) * 0.005);
+                    modelGroup.position.y = (Math.sin(time * 3.5) * 0.005) - 0.5; // Maintained the -0.5 offset during animation
                     modelGroup.rotation.y = Math.sin(time * 1.5) * 0.012;
                     mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, Math.abs(Math.sin(time * 22)) * 0.22, 0.4);
                 } else {
-                    modelGroup.position.y = Math.sin(time * 1.2) * 0.004;
+                    modelGroup.position.y = (Math.sin(time * 1.2) * 0.004) - 0.5; // Maintained the -0.5 offset during animation
                     modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
                     mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, 0, 0.2);
                 }
