@@ -712,9 +712,20 @@
             lessonBody.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Processing request stream...</span>`;
 
             try {
-                // FIXED: Updated to Gemini 1.5 Flash Model
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
-                
+                // FIXED: Updated to Gemini 3.5 Flash Model
+                import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({});
+
+async function main() {
+  const response = await ai.models.generateContent({
+    model: "gemini-3.5-flash",
+    
+  });
+  console.log(response.text);
+}
+
+
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
