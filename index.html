@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -416,8 +415,17 @@
             modelGroup = new THREE.Group();
             scene.add(modelGroup);
 
+            // Safety Fallback Timer to clear loading UI if network stalls
+            const fallbackTimeout = setTimeout(() => {
+                if (loaderUI && loaderUI.style.display !== 'none') {
+                    loaderUI.style.opacity = '0';
+                    setTimeout(() => loaderUI.style.display = 'none', 200);
+                }
+            }, 8000);
+
             const loader = new GLTFLoader();
             loader.load('./teacher.glb', function (gltf) {
+                clearTimeout(fallbackTimeout);
                 const model = gltf.scene;
 
                 model.traverse((child) => {
@@ -438,7 +446,7 @@
                 const size = box.getSize(new THREE.Vector3());
                 
                 const targetHeight = 2.2;
-                const scale = targetHeight / size.y;
+                const scale = targetHeight / (size.y || 1);
                 model.scale.set(scale, scale, scale);
                 
                 const scaledBox = new THREE.Box3().setFromObject(model);
@@ -463,6 +471,7 @@
             },
             function (error) {
                 console.error(error);
+                clearTimeout(fallbackTimeout);
                 loaderUI.style.opacity = '0';
                 setTimeout(() => loaderUI.style.display = 'none', 200);
             });
@@ -653,7 +662,6 @@
             lessonBody.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Processing request stream...</span>`;
 
             try {
-                // CHANGED: Configured target endpoint to use gemini-3.1-flash-preview model dynamically
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
                 
                 const response = await fetch(url, {
@@ -661,4 +669,52 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         systemInstruction: {
-                            parts:
+                            parts: [{ text: "You are Dr. Nova, an elite AI virtual teacher. Format responses into a single brief clean actionable explanation paragraph. Do not use asterisks or markdown structures." }]
+                        },
+                        contents: [{ parts: [{ text: query }] }]
+                    })
+                });
+
+                if (!response.ok) throw new Error("Network Response Fail");
+                
+                const data = await response.json();
+                const aiResponseText = data.candidates[0].content.parts[0].text;
+                
+                await streamResponseIntoCards(aiResponseText);
+
+            } catch (error) {
+                console.error(error);
+                chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed. Using engine fallback.</strong>`;
+                setIdleMode();
+            }
+        }
+
+        async function streamResponseIntoCards(text) {
+            lessonBody.innerHTML = "";
+            if (soundEnabled) speakText(text);
+
+            const card = document.createElement('div');
+            card.className = 'teaching-card';
+            lessonBody.appendChild(card);
+            
+            const tokens = text.split(/(\s+)/);
+            let structuredOutput = "";
+            
+            for (let token of tokens) {
+                structuredOutput += token;
+                card.innerHTML = structuredOutput;
+                lessonBody.scrollTop = lessonBody.scrollHeight;
+                await new Promise(resolve => setTimeout(resolve, 25));
+            }
+        }
+
+        function speakText(text) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.05;
+            utterance.pitch = 1.0;
+            
+            const voices = window.speechSynthesis.getVoices();
+            const chosenVoice = voices.find(v =>
