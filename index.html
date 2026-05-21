@@ -121,7 +121,7 @@
 
         .canvas-wrapper {
             position: relative; width: 100%; max-width: 1100px;
-            aspect-ratio: 16 / 9;
+            aspect-ratio: 16 / 9; /* Proper landscape frame constraint */
             border-radius: var(--border-radius-lg);
             overflow: hidden;
             background: linear-gradient(135deg, #ffffff 0%, #eef0f6 100%);
@@ -133,6 +133,7 @@
 
         .canvas-wrapper:fullscreen { border-radius: 0; max-width: 100%; }
         
+        /* Smooth shrinking container for Character on the Left */
         #canvas-container { 
             width: 100%; 
             height: 100%; 
@@ -142,6 +143,7 @@
         }
         #canvas-container:active { cursor: grabbing; }
 
+        /* Animation trigger: moves character left & down scale */
         .canvas-wrapper.teaching-mode #canvas-container {
             width: 35%; 
         }
@@ -161,6 +163,7 @@
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
+        /* PRESENTATION ANSWER DECK PANEL (SIDE-BY-SIDE) */
         #lesson-panel {
             width: 0%;
             height: 100%;
@@ -311,7 +314,7 @@
             .send-btn { padding: 12px 20px; font-size: 14px; }
             
             .canvas-wrapper.teaching-mode #canvas-container {
-                width: 40%; 
+                width: 40%; /* Slightly wider for clear avatar viewing on mobile layout */
             }
             .canvas-wrapper.teaching-mode #lesson-panel {
                 width: 60%;
@@ -423,6 +426,9 @@
         let isTeachingMode = false;
         let isSpeaking = false;
         const uiModeBadge = document.getElementById('ui-mode-badge');
+        
+        // Strict focus point matching upper chest/neck boundary to force beautiful face framing
+        const currentCamTarget = new THREE.Vector3(0, 1.45, 0);
 
         init3D();
         animate3D();
@@ -433,10 +439,10 @@
             clock = new THREE.Clock();
 
             const aspect = container.clientWidth / container.clientHeight;
-            camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 100);
+            camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
             
-            // Hardcoding camera position to directly focus on face height
-            camera.position.set(0, 1.48, 0.95);
+            const config = getResponsiveCameraConfig();
+            camera.position.copy(config.idleCam);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
             renderer.setSize(container.clientWidth, container.clientHeight);
@@ -446,15 +452,15 @@
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             container.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
             scene.add(ambientLight);
 
-            const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+            const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
             keyLight.position.set(2, 4, 3);
             keyLight.castShadow = true;
             scene.add(keyLight);
 
-            const fillLight = new THREE.DirectionalLight(0xebf3ff, 1.5);
+            const fillLight = new THREE.DirectionalLight(0xebf3ff, 1.2);
             fillLight.position.set(-3, 2, 2);
             scene.add(fillLight);
 
@@ -462,20 +468,13 @@
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
             
-            // Absolute camera target lock onto the chest/neck axis (No movement below waist)
-            controls.target.set(0, 1.45, 0);
-            
-            // Prevent scrolling/tilting to the feet completely
-            controls.minDistance = 0.6;
-            controls.maxDistance = 1.6;
+            // Limit zooming distances tightly around the face area so users can't scroll to feet
+            controls.minDistance = 0.8;
+            controls.maxDistance = 3.5;
             controls.enablePan = false;
-            
-            // Tight constraints block vertical dragging down to legs
-            controls.minPolarAngle = Math.PI / 2.2; 
-            controls.maxPolarAngle = Math.PI / 1.9;
-
             controls.autoRotate = true;
             controls.autoRotateSpeed = 0.8;
+            controls.target.copy(config.idleTarget);
 
             modelGroup = new THREE.Group();
             scene.add(modelGroup);
@@ -491,16 +490,17 @@
                     }
                 });
 
-                // Enforce proper full height bounds inside layout matrix
+                // Standardizing model scale to 1.7m absolute scale
                 const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
-                const targetHeight = 1.75;
+                const targetHeight = 1.7;
                 const scale = targetHeight / size.y;
                 model.scale.set(scale, scale, scale);
 
                 const refreshedBox = new THREE.Box3().setFromObject(model);
                 const refreshedCenter = refreshedBox.getCenter(new THREE.Vector3());
                 
+                // Ground baseline locks absolute bottom to 0, ensuring head matches 1.7 top perfectly
                 model.position.x = -refreshedCenter.x;
                 model.position.y = -refreshedBox.min.y; 
                 model.position.z = -refreshedCenter.z;
@@ -531,19 +531,50 @@
             resizeObserver.observe(container);
         }
 
+        /* ==========================================
+           MATHEMATICAL CAMERA OVERRIDES - NO FEET VISIBLE
+           ========================================== */
+        function getResponsiveCameraConfig() {
+    const width = window.innerWidth;
+    const isMobile = width <= 768;
+
+    if (isMobile) {
+        return {
+            idleCam: new THREE.Vector3(0, 1.15, 1.75),
+            idleTarget: new THREE.Vector3(0, 1.15, 0),
+
+            teachCam: new THREE.Vector3(0, 1.1, 2.0),
+            teachTarget: new THREE.Vector3(0, 1.1, 0)
+        };
+    } else {
+        return {
+            idleCam: new THREE.Vector3(0, 1.2, 1.6),
+            idleTarget: new THREE.Vector3(0, 1.15, 0),
+
+            teachCam: new THREE.Vector3(0, 1.15, 1.9),
+            teachTarget: new THREE.Vector3(0, 1.1, 0)
+        };
+    }
+        }
         function animate3D() {
             requestAnimationFrame(animate3D);
             const time = clock.getElapsedTime();
 
-            // Permanent anchor lock logic overriding controls runtime drift
-            controls.target.set(0, 1.45, 0);
+            const config = getResponsiveCameraConfig();
+            const targetCam = isTeachingMode ? config.teachCam : config.idleCam;
+            const targetLook = isTeachingMode ? config.teachTarget : config.idleTarget;
+
+            camera.position.lerp(targetCam, 0.05);
+            currentCamTarget.lerp(targetLook, 0.05);
+            controls.target.copy(currentCamTarget);
 
             if (modelGroup) {
                 if (isSpeaking) {
-                    modelGroup.position.y = (Math.sin(time * 2.5) * 0.01) - 0.002;
-                    modelGroup.rotation.y = Math.sin(time * 1.8) * 0.015;
+                    modelGroup.position.y = (Math.sin(time * 2.5) * 0.012) - 0.003;
+                    modelGroup.rotation.y = Math.sin(time * 1.8) * 0.02;
                 } else {
-                    modelGroup.position.y = Math.sin(time * 1.1) * 0.005;
+                    modelGroup.position.y = Math.sin(time * 1.1) * 0.008;
+                    modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
                 }
             }
 
@@ -591,10 +622,8 @@
             uiModeBadge.innerText = "TEACHING MODE";
             uiModeBadge.style.background = "rgba(255, 59, 48, 0.1)";
             uiModeBadge.style.color = "var(--danger)";
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-                camera.position.set(0, 1.46, 1.2); // Frame lock for layout transition
-            }, 60);
+            // Dispatch resize event manually to sync ThreeJS canvas boundaries perfectly
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
         }
 
         function setIdleMode() {
@@ -603,10 +632,7 @@
             uiModeBadge.innerText = "IDLE MODE";
             uiModeBadge.style.background = "var(--accent-glow)";
             uiModeBadge.style.color = "var(--accent-color)";
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-                camera.position.set(0, 1.48, 0.95); // Restoring perfect portrait framing
-            }, 60);
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
         }
 
         /* ==========================================
@@ -675,4 +701,113 @@
             setTeachingMode();
             lessonBody.innerHTML = `
                 <div class="teaching-card" style="text-align:center; background:none; box-shadow:none; border:none;">
-                    <div class="spinner" style="margin: 0 auto 10px; width: 35px; height:35px
+                    <div class="spinner" style="margin: 0 auto 10px; width: 35px; height:35px;"></div>
+                    <span style="color:var(--text-muted); font-size:13px;">Structuring response presentation...</span>
+                </div>`;
+
+            if (!GEMINI_API_KEY || GEMINI_API_KEY === "PASTE_YOUR_API_KEY_HERE") {
+                chatText.innerHTML = `<strong style="color:var(--danger)">Configuration Error:</strong> Key missing inside code. Please edit the source file.`;
+                lessonBody.innerHTML = `<div class="teaching-card"><strong>Setup Needed:</strong> Open this file in a text editor and paste your API key inside the script block at <code>const GEMINI_API_KEY</code>.</div>`;
+                setIdleMode();
+                return;
+            }
+
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        systemInstruction: {
+                            parts: [{ text: "You are Dr. Nova, an elite virtual class instructor. Break responses down into highly structural bullet points or short digestible paragraphs. Do not use random asterisks." }]
+                        },
+                        contents: [{ parts: [{ text: query }] }]
+                    })
+                });
+
+                if (!response.ok) throw new Error("Network Response Fail");
+                
+                const data = await response.json();
+                const aiResponseText = data.candidates[0].content.parts[0].text;
+                
+                await streamResponseIntoCards(aiResponseText);
+
+            } catch (error) {
+                console.error(error);
+                chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed. Check authentication keys or parameters.</strong>`;
+                setIdleMode();
+            }
+        }
+
+        /* ==========================================
+           SMOOTH PRESENTATION DRIVER ENGINE
+           ========================================== */
+        async function streamResponseIntoCards(text) {
+            lessonBody.innerHTML = "";
+            
+            if (soundEnabled) speakText(text);
+
+            const paragraphs = text.split('\n\n').filter(p => p.trim() !== "");
+            
+            for (let i = 0; i < paragraphs.length; i++) {
+                const card = document.createElement('div');
+                card.className = 'teaching-card';
+                lessonBody.appendChild(card);
+                
+                const tokens = paragraphs[i].split(/(\s+)/);
+                let structuredOutput = "";
+                
+                for (let token of tokens) {
+                    structuredOutput += token;
+                    card.innerHTML = structuredOutput.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    lessonBody.scrollTop = lessonBody.scrollHeight;
+                    
+                    await new Promise(resolve => setTimeout(resolve, 30));
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 120));
+            }
+        }
+
+        function speakText(text) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+
+            const pureStringText = text.replace(/\*/g, '');
+            const utterance = new SpeechSynthesisUtterance(pureStringText);
+            
+            utterance.rate = 1.05;
+            utterance.pitch = 1.02;
+            
+            const voices = window.speechSynthesis.getVoices();
+            const chosenVoice = voices.find(v => v.name.includes('Female') || v.lang.startsWith('en'));
+            if(chosenVoice) utterance.voice = chosenVoice;
+
+            utterance.onstart = () => {
+                isSpeaking = true;
+                audioWave.classList.add('active');
+                lessonPanel.classList.add('speaking-glow');
+            };
+            
+            utterance.onend = () => {
+                isSpeaking = false;
+                audioWave.classList.remove('active');
+                lessonPanel.classList.remove('speaking-glow');
+            };
+
+            utterance.onerror = () => {
+                isSpeaking = false;
+                audioWave.classList.remove('active');
+                lessonPanel.classList.remove('speaking-glow');
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.getVoices();
+        };
+    </script>
+</body>
+</html>
