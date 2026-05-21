@@ -717,4 +717,30 @@
             utterance.pitch = 1.0;
             
             const voices = window.speechSynthesis.getVoices();
-            const chosenVoice = voices.find(v =>
+            const chosenVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google US English') || v.lang.startsWith('en'));
+            if(chosenVoice) utterance.voice = chosenVoice;
+
+            utterance.onstart = () => {
+                isSpeaking = true;
+                audioWave.classList.add('active');
+            };
+            
+            utterance.onend = () => {
+                isSpeaking = false;
+                audioWave.classList.remove('active');
+            };
+
+            utterance.onerror = () => {
+                isSpeaking = false;
+                audioWave.classList.remove('active');
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.getVoices();
+        };
+    </script>
+</body>
+</html>
