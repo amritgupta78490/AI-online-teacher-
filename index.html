@@ -354,9 +354,9 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         /* ==========================================
-           IMPORTANT: API KEY SYSTEM CONFIGURATION
+           IMPORTANT: API KEY SYSTEM CONFIGURATION (UPDATED)
            ========================================== */
-        const GEMINI_API_KEY = "PASTE_YOUR_API_KEY_HERE";
+        const GEMINI_API_KEY = "AIzaSyB7JR9k0tGtk451y3Rg9nw83TUYP5tkxoQ";
 
         /* ==========================================
            1. THREE.JS ENVIRONMENT SETUP
@@ -373,8 +373,6 @@
         let isSpeaking = false;
         let mouthOpenIntensity = 0;
         
-        // FIXED TARGET: Now points squarely to the upper chest/neck level (Y = 1.1)
-        // This ensures the camera is tilting up to frame the head perfectly.
         const absoluteCenterTarget = new THREE.Vector3(0, 1.1, 0);
         const uiModeBadge = document.getElementById('ui-mode-badge');
 
@@ -408,7 +406,7 @@
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
             controls.minDistance = 1.0;
-            controls.maxDistance = 15; 
+            controls.maxDistance = 20; 
             controls.enablePan = false;
             controls.autoRotate = true;
             controls.autoRotateSpeed = 0.4;
@@ -417,12 +415,10 @@
             modelGroup = new THREE.Group();
             scene.add(modelGroup);
 
-            // Optimized async fast GLTF loader pipeline
             const loader = new GLTFLoader();
             loader.load('./teacher.glb', function (gltf) {
                 const model = gltf.scene;
 
-                // Processing bone mapping using optimized execution loop
                 model.traverse((child) => {
                     if (child.isMesh) {
                         child.castShadow = false; 
@@ -437,28 +433,22 @@
                     }
                 });
 
-                // --- PERFECT CENTERING, SCALING & HEIGHT CALIBRATION ---
                 const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
                 
-                // Scale model to standard visible height (2.2 units)
                 const targetHeight = 2.2;
                 const scale = targetHeight / size.y;
                 model.scale.set(scale, scale, scale);
                 
-                // Re-calculate bounding box after scaling to find the exact center point
                 const scaledBox = new THREE.Box3().setFromObject(model);
                 const center = scaledBox.getCenter(new THREE.Vector3());
                 
-                // Aligning base and centering properly
                 model.position.x = -center.x; 
                 model.position.y = -center.y - 0.5; 
                 model.position.z = -center.z;
-                // ---------------------------------------
 
                 modelGroup.add(model);
 
-                // Instantly hide loading UI elements
                 loaderUI.style.opacity = '0';
                 setTimeout(() => loaderUI.style.display = 'none', 200);
             }, 
@@ -467,13 +457,11 @@
                     const percent = Math.round((xhr.loaded / xhr.total) * 100);
                     loadingStatus.innerText = `Loading Dr. Nova Engine (${percent}%)...`;
                 } else {
-                    // Fallback for non-chunked server requests
                     loadingStatus.innerText = `Streaming Virtual Headsets...`;
                 }
             },
             function (error) {
                 console.error(error);
-                // Auto recovery fallback trigger if loading takes too long
                 loaderUI.style.opacity = '0';
                 setTimeout(() => loaderUI.style.display = 'none', 200);
             });
@@ -489,17 +477,14 @@
             resizeObserver.observe(container);
         }
 
-        // --- ENHANCED ZOOM OUT CONFIGURATION ---
-        // Pushed the Z-depth further back so the face doesn't get chopped off on small views
-        // Balanced the Y-eye level to center the full character elegantly
+        // --- ENHANCED 40% ZOOM OUT POSITIONING ---
         function updateCameraPosition() {
             if (container.clientWidth < 768) {
-                camera.position.set(0, 1.2, 7.5); // Zoomed way out for mobile vertical screens
+                camera.position.set(0, 1.2, 11.0); // Mobile view zoomed out further by 40%
             } else {
-                camera.position.set(0, 1.2, 6.5); // Stable fallback overview zoom for desktops
+                camera.position.set(0, 1.2, 9.5);  // Desktop view zoomed out further by 40%
             }
         }
-        // ----------------------------------------
 
         function animate3D() {
             requestAnimationFrame(animate3D);
@@ -511,7 +496,8 @@
                 if (isSpeaking) {
                     modelGroup.position.y = (Math.sin(time * 3.5) * 0.005) - 0.5; 
                     modelGroup.rotation.y = Math.sin(time * 1.5) * 0.012;
-                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, Math.abs(Math.sin(time * 22)) * 0.22, 0.4);
+                    // Lip syncing intensity logic bound strictly to sound runtime
+                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, Math.abs(Math.sin(time * 24)) * 0.25, 0.45);
                 } else {
                     modelGroup.position.y = (Math.sin(time * 1.2) * 0.004) - 0.5; 
                     modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
@@ -523,7 +509,7 @@
                 } else {
                     modelGroup.traverse((child) => {
                         if (child.morphTargetInfluences && child.morphTargetDictionary) {
-                            const jawOpenIdx = child.morphTargetDictionary['jawOpen'] || child.morphTargetDictionary['mouth_open'];
+                            const jawOpenIdx = child.morphTargetDictionary['jawOpen'] || child.morphTargetDictionary['mouth_open'] || child.morphTargetDictionary['Mouth_Open'];
                             if (jawOpenIdx !== undefined) {
                                 child.morphTargetInfluences[jawOpenIdx] = mouthOpenIntensity * 3.0;
                             }
@@ -565,7 +551,10 @@
         btnSound.addEventListener('click', () => {
             soundEnabled = !soundEnabled;
             btnSound.classList.toggle('active-state');
-            if(!soundEnabled) window.speechSynthesis.cancel();
+            if(!soundEnabled) {
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+            }
         });
 
         btnFullscreen.addEventListener('click', () => {
@@ -663,5 +652,88 @@
             setTeachingMode();
             lessonBody.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Processing request stream...</span>`;
 
-            if (!GEMINI_API_KEY || GEMINI_API_KEY === "PASTE_YOUR_API_KEY_HERE") {
-                chatText.innerHTML = `<strong style="color:var(--danger)">Configuration
+            try {
+                // Optimized fast inference connection endpoint
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        systemInstruction: {
+                            parts: [{ text: "You are Dr. Nova, an elite AI virtual teacher. Format responses into a single brief clean actionable explanation paragraph. Do not use asterisks or markdown structures." }]
+                        },
+                        contents: [{ parts: [{ text: query }] }]
+                    })
+                });
+
+                if (!response.ok) throw new Error("Network Response Fail");
+                
+                const data = await response.json();
+                const aiResponseText = data.candidates[0].content.parts[0].text;
+                
+                await streamResponseIntoCards(aiResponseText);
+
+            } catch (error) {
+                console.error(error);
+                chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed. Using engine fallback.</strong>`;
+                setIdleMode();
+            }
+        }
+
+        async function streamResponseIntoCards(text) {
+            lessonBody.innerHTML = "";
+            if (soundEnabled) speakText(text);
+
+            const card = document.createElement('div');
+            card.className = 'teaching-card';
+            lessonBody.appendChild(card);
+            
+            const tokens = text.split(/(\s+)/);
+            let structuredOutput = "";
+            
+            for (let token of tokens) {
+                structuredOutput += token;
+                card.innerHTML = structuredOutput;
+                lessonBody.scrollTop = lessonBody.scrollHeight;
+                await new Promise(resolve => setTimeout(resolve, 25));
+            }
+        }
+
+        // --- AUTOMATIC LIP SYNCING ENGINE ---
+        function speakText(text) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.05;
+            utterance.pitch = 1.0;
+            
+            const voices = window.speechSynthesis.getVoices();
+            const chosenVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google US English') || v.lang.startsWith('en'));
+            if(chosenVoice) utterance.voice = chosenVoice;
+
+            utterance.onstart = () => {
+                isSpeaking = true;
+                audioWave.classList.add('active');
+            };
+            
+            utterance.onend = () => {
+                isSpeaking = false;
+                audioWave.classList.remove('active');
+            };
+
+            utterance.onerror = () => {
+                isSpeaking = false;
+                audioWave.classList.remove('active');
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.getVoices();
+        };
+    </script>
+</body>
+</html>
