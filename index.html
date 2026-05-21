@@ -362,7 +362,16 @@
            1. THREE.JS ENVIRONMENT SETUP
            ========================================== */
         let scene, camera, renderer, controls, clock, modelGroup;
+        
+        // Bone Animation Variables
         let jawBone = null; 
+        let bodyBones = {
+            spine: null,
+            leftArm: null, rightArm: null,
+            leftForeArm: null, rightForeArm: null,
+            leftUpLeg: null, rightUpLeg: null
+        };
+        const initialBoneRotations = new Map();
         
         const container = document.getElementById('canvas-container');
         const wrapper = document.getElementById('video-wrapper');
@@ -437,8 +446,19 @@
                             child.material.metalness = 0.0;
                         }
                     }
-                    if (child.isBone && (child.name.toLowerCase().includes('jaw') || child.name.toLowerCase().includes('mouth'))) {
-                        jawBone = child;
+                    if (child.isBone) {
+                        // Store default initial rotation for clean animations
+                        initialBoneRotations.set(child.uuid, child.rotation.clone());
+                        
+                        const name = child.name.toLowerCase();
+                        if (name.includes('jaw') || name.includes('mouth')) jawBone = child;
+                        else if (name.includes('spine') || name.includes('chest')) bodyBones.spine = child;
+                        else if (name.includes('leftarm') || name.includes('left_arm')) bodyBones.leftArm = child;
+                        else if (name.includes('rightarm') || name.includes('right_arm')) bodyBones.rightArm = child;
+                        else if (name.includes('leftforearm') || name.includes('left_forearm')) bodyBones.leftForeArm = child;
+                        else if (name.includes('rightforearm') || name.includes('right_forearm')) bodyBones.rightForeArm = child;
+                        else if (name.includes('leftupleg') || name.includes('left_leg') || name.includes('leftthigh')) bodyBones.leftUpLeg = child;
+                        else if (name.includes('rightupleg') || name.includes('right_leg') || name.includes('rightthigh')) bodyBones.rightUpLeg = child;
                     }
                 });
 
@@ -490,9 +510,9 @@
         // --- ENHANCED ADDITIONAL 15% ZOOM OUT POSITIONING ---
         function updateCameraPosition() {
             if (container.clientWidth < 768) {
-                camera.position.set(0, 1.2, 12.65); // Mobile view zoomed out by another 15% (11.0 -> 12.65)
+                camera.position.set(0, 1.2, 12.65); 
             } else {
-                camera.position.set(0, 1.2, 10.95); // Desktop view zoomed out by another 15% (9.5 -> 10.95)
+                camera.position.set(0, 1.2, 10.95); 
             }
         }
 
@@ -503,16 +523,46 @@
             controls.target.lerp(absoluteCenterTarget, 0.1);
 
             if (modelGroup && modelGroup.children.length > 0) {
+                
+                // Audio Responsive Animation Drivers
+                const wave1 = Math.sin(time * 3);
+                const wave2 = Math.cos(time * 2.5);
+                const breath = Math.sin(time * 1.5);
+
                 if (isSpeaking) {
+                    // Global Body Bobbing
                     modelGroup.position.y = (Math.sin(time * 3.5) * 0.005) - 0.5; 
                     modelGroup.rotation.y = Math.sin(time * 1.5) * 0.012;
                     mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, Math.abs(Math.sin(time * 24)) * 0.25, 0.45);
+
+                    // Professional Hand & Leg Gestures
+                    if(bodyBones.leftArm) bodyBones.leftArm.rotation.z = THREE.MathUtils.lerp(bodyBones.leftArm.rotation.z, initialBoneRotations.get(bodyBones.leftArm.uuid).z + wave1 * 0.12 + 0.05, 0.1);
+                    if(bodyBones.rightArm) bodyBones.rightArm.rotation.z = THREE.MathUtils.lerp(bodyBones.rightArm.rotation.z, initialBoneRotations.get(bodyBones.rightArm.uuid).z - wave2 * 0.12 - 0.05, 0.1);
+                    if(bodyBones.leftForeArm) bodyBones.leftForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.leftForeArm.rotation.x, initialBoneRotations.get(bodyBones.leftForeArm.uuid).x - Math.abs(wave1) * 0.25, 0.1);
+                    if(bodyBones.rightForeArm) bodyBones.rightForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.rightForeArm.rotation.x, initialBoneRotations.get(bodyBones.rightForeArm.uuid).x - Math.abs(wave2) * 0.25, 0.1);
+                    
+                    if(bodyBones.spine) bodyBones.spine.rotation.y = THREE.MathUtils.lerp(bodyBones.spine.rotation.y, initialBoneRotations.get(bodyBones.spine.uuid).y + wave1 * 0.03, 0.1);
+                    
+                    if(bodyBones.leftUpLeg) bodyBones.leftUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.leftUpLeg.rotation.z, initialBoneRotations.get(bodyBones.leftUpLeg.uuid).z + breath * 0.015, 0.1);
+                    if(bodyBones.rightUpLeg) bodyBones.rightUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.rightUpLeg.rotation.z, initialBoneRotations.get(bodyBones.rightUpLeg.uuid).z + breath * 0.015, 0.1);
+
                 } else {
+                    // Idle Breathing State
                     modelGroup.position.y = (Math.sin(time * 1.2) * 0.004) - 0.5; 
                     modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
                     mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, 0, 0.2);
+
+                    // Smooth Return to Idle Pose
+                    if(bodyBones.leftArm) bodyBones.leftArm.rotation.z = THREE.MathUtils.lerp(bodyBones.leftArm.rotation.z, initialBoneRotations.get(bodyBones.leftArm.uuid).z + breath * 0.02, 0.05);
+                    if(bodyBones.rightArm) bodyBones.rightArm.rotation.z = THREE.MathUtils.lerp(bodyBones.rightArm.rotation.z, initialBoneRotations.get(bodyBones.rightArm.uuid).z - breath * 0.02, 0.05);
+                    if(bodyBones.leftForeArm) bodyBones.leftForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.leftForeArm.rotation.x, initialBoneRotations.get(bodyBones.leftForeArm.uuid).x, 0.05);
+                    if(bodyBones.rightForeArm) bodyBones.rightForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.rightForeArm.rotation.x, initialBoneRotations.get(bodyBones.rightForeArm.uuid).x, 0.05);
+                    if(bodyBones.spine) bodyBones.spine.rotation.y = THREE.MathUtils.lerp(bodyBones.spine.rotation.y, initialBoneRotations.get(bodyBones.spine.uuid).y, 0.05);
+                    if(bodyBones.leftUpLeg) bodyBones.leftUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.leftUpLeg.rotation.z, initialBoneRotations.get(bodyBones.leftUpLeg.uuid).z, 0.05);
+                    if(bodyBones.rightUpLeg) bodyBones.rightUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.rightUpLeg.rotation.z, initialBoneRotations.get(bodyBones.rightUpLeg.uuid).z, 0.05);
                 }
 
+                // Jaw & Blink Mechanics (Unchanged)
                 if (jawBone) {
                     jawBone.rotation.x = mouthOpenIntensity; 
                 } else {
@@ -621,7 +671,7 @@
                 chatInput.placeholder = "Listening active...";
             };
             recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
+                const transcript = event.results.transcript;
                 chatInput.value = transcript;
                 handleUserQuery(transcript);
             };
@@ -662,7 +712,8 @@
             lessonBody.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Processing request stream...</span>`;
 
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
+                // FIXED: Updated to Gemini 1.5 Flash Model
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -678,7 +729,7 @@
                 if (!response.ok) throw new Error("Network Response Fail");
                 
                 const data = await response.json();
-                const aiResponseText = data.candidates[0].content.parts[0].text;
+                const aiResponseText = data.candidates.content.parts.text;
                 
                 await streamResponseIntoCards(aiResponseText);
 
