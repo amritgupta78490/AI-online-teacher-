@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -320,7 +321,7 @@
                     <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
                 </button>
                 <button class="icon-btn active-state" id="btn-rotate" title="Toggle Auto-Rotate">
-                    <svg viewBox="0 0 24 24"><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5s2.24-5 5-5v3l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.44-2.43l1.41 1.41c.91-1.16 1.46-2.51 1.63-3.9h-2.02c-.14.87-.48 1.72-1.02 2.49z"/></svg>
+                    <svg viewBox="0 0 24 24"><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5s2.24-5 5-5v3l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9 shadow-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.44-2.43l1.41 1.41c.91-1.16 1.46-2.51 1.63-3.9h-2.02c-.14.87-.48 1.72-1.02 2.49z"/></svg>
                 </button>
                 <button class="icon-btn active-state" id="btn-sound" title="Toggle AI Voice">
                     <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
@@ -354,7 +355,7 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         /* ==========================================
-           IMPORTANT: API KEY SYSTEM CONFIGURATION (UPDATED)
+           IMPORTANT: API KEY SYSTEM CONFIGURATION
            ========================================== */
         const GEMINI_API_KEY = "AIzaSyB7JR9k0tGtk451y3Rg9nw83TUYP5tkxoQ";
 
@@ -406,7 +407,7 @@
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
             controls.minDistance = 1.0;
-            controls.maxDistance = 20; 
+            controls.maxDistance = 25; 
             controls.enablePan = false;
             controls.autoRotate = true;
             controls.autoRotateSpeed = 0.4;
@@ -477,12 +478,12 @@
             resizeObserver.observe(container);
         }
 
-        // --- ENHANCED 40% ZOOM OUT POSITIONING ---
+        // --- ENHANCED ADDITIONAL 15% ZOOM OUT POSITIONING ---
         function updateCameraPosition() {
             if (container.clientWidth < 768) {
-                camera.position.set(0, 1.2, 11.0); // Mobile view zoomed out further by 40%
+                camera.position.set(0, 1.2, 12.65); // Mobile view zoomed out by another 15% (11.0 -> 12.65)
             } else {
-                camera.position.set(0, 1.2, 9.5);  // Desktop view zoomed out further by 40%
+                camera.position.set(0, 1.2, 10.95); // Desktop view zoomed out by another 15% (9.5 -> 10.95)
             }
         }
 
@@ -496,7 +497,6 @@
                 if (isSpeaking) {
                     modelGroup.position.y = (Math.sin(time * 3.5) * 0.005) - 0.5; 
                     modelGroup.rotation.y = Math.sin(time * 1.5) * 0.012;
-                    // Lip syncing intensity logic bound strictly to sound runtime
                     mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, Math.abs(Math.sin(time * 24)) * 0.25, 0.45);
                 } else {
                     modelGroup.position.y = (Math.sin(time * 1.2) * 0.004) - 0.5; 
@@ -653,87 +653,12 @@
             lessonBody.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Processing request stream...</span>`;
 
             try {
-                // Optimized fast inference connection endpoint
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                // CHANGED: Configured target endpoint to use gemini-3.1-flash-preview model dynamically
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         systemInstruction: {
-                            parts: [{ text: "You are Dr. Nova, an elite AI virtual teacher. Format responses into a single brief clean actionable explanation paragraph. Do not use asterisks or markdown structures." }]
-                        },
-                        contents: [{ parts: [{ text: query }] }]
-                    })
-                });
-
-                if (!response.ok) throw new Error("Network Response Fail");
-                
-                const data = await response.json();
-                const aiResponseText = data.candidates[0].content.parts[0].text;
-                
-                await streamResponseIntoCards(aiResponseText);
-
-            } catch (error) {
-                console.error(error);
-                chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed. Using engine fallback.</strong>`;
-                setIdleMode();
-            }
-        }
-
-        async function streamResponseIntoCards(text) {
-            lessonBody.innerHTML = "";
-            if (soundEnabled) speakText(text);
-
-            const card = document.createElement('div');
-            card.className = 'teaching-card';
-            lessonBody.appendChild(card);
-            
-            const tokens = text.split(/(\s+)/);
-            let structuredOutput = "";
-            
-            for (let token of tokens) {
-                structuredOutput += token;
-                card.innerHTML = structuredOutput;
-                lessonBody.scrollTop = lessonBody.scrollHeight;
-                await new Promise(resolve => setTimeout(resolve, 25));
-            }
-        }
-
-        // --- AUTOMATIC LIP SYNCING ENGINE ---
-        function speakText(text) {
-            if (!window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.05;
-            utterance.pitch = 1.0;
-            
-            const voices = window.speechSynthesis.getVoices();
-            const chosenVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google US English') || v.lang.startsWith('en'));
-            if(chosenVoice) utterance.voice = chosenVoice;
-
-            utterance.onstart = () => {
-                isSpeaking = true;
-                audioWave.classList.add('active');
-            };
-            
-            utterance.onend = () => {
-                isSpeaking = false;
-                audioWave.classList.remove('active');
-            };
-
-            utterance.onerror = () => {
-                isSpeaking = false;
-                audioWave.classList.remove('active');
-            };
-
-            window.speechSynthesis.speak(utterance);
-        }
-
-        window.speechSynthesis.onvoiceschanged = () => {
-            window.speechSynthesis.getVoices();
-        };
-    </script>
-</body>
-</html>
+                            parts:
