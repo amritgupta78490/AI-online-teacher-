@@ -39,13 +39,12 @@
                 radial-gradient(circle at 15% 50%, rgba(0, 102, 204, 0.06), transparent 35%),
                 radial-gradient(circle at 85% 30%, rgba(0, 204, 255, 0.06), transparent 35%);
             color: var(--text-main);
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow-x: hidden;
+            overflow: hidden;
         }
 
-        /* Glassmorphism utility */
         .glass {
             background: var(--surface-color);
             backdrop-filter: blur(30px);
@@ -55,7 +54,7 @@
         }
 
         /* ==========================================
-           LAYOUT MAIN
+           LAYOUT MAIN (Fixed Screen Fitting)
            ========================================== */
         .app-layout {
             display: flex;
@@ -63,18 +62,18 @@
             width: 100%;
             max-width: 1300px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 16px;
             height: 100vh;
-            gap: 20px;
+            gap: 14px;
         }
 
-        /* Top Header */
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 12px 24px;
             border-radius: var(--border-radius-lg);
+            flex-shrink: 0;
             z-index: 10;
         }
 
@@ -115,15 +114,15 @@
         }
 
         /* ==========================================
-           FULL CHARACTER VIEW CONTAINER (No 16:9)
+           VIDEO SECTION WITH FULL FRAME FITTING
            ========================================== */
         .video-section {
             width: 100%; 
-            flex-grow: 1;
+            flex: 1;
+            min-height: 0; 
             display: flex; 
             justify-content: center; 
             align-items: center;
-            min-height: 400px;
         }
 
         .canvas-wrapper {
@@ -158,7 +157,7 @@
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* Floating AI Speech Overlay instead of Blocking Panel */
+        /* Floating Explanation Overlay */
         #lesson-panel {
             position: absolute;
             bottom: 20px; left: 50%;
@@ -175,10 +174,9 @@
             opacity: 0;
             transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
             z-index: 10;
-            max-height: 200px;
+            max-height: 180px;
         }
 
-        /* Triggered via JS in Teaching Mode */
         .canvas-wrapper.teaching-mode #lesson-panel {
             transform: translateX(-50%) translateY(0);
             opacity: 1;
@@ -217,21 +215,22 @@
         }
 
         /* ==========================================
-           CONTROLS & AI CHAT AREA
+           INTERACTION & CONTROLS AREA
            ========================================== */
         .interaction-area {
-            display: flex; flex-direction: column; gap: 12px;
+            display: flex; flex-direction: column; gap: 10px;
             max-width: 1100px; width: 100%; margin: 0 auto;
+            flex-shrink: 0;
         }
 
         .controls-bar {
             display: flex; justify-content: center; gap: 16px;
-            padding: 10px; border-radius: var(--border-radius-lg);
+            padding: 8px; border-radius: var(--border-radius-lg);
         }
 
         .icon-btn {
             background: var(--surface-solid); border: 1px solid rgba(0,0,0,0.04);
-            width: 48px; height: 48px; border-radius: 50%;
+            width: 46px; height: 46px; border-radius: 50%;
             display: flex; justify-content: center; align-items: center;
             cursor: pointer; color: var(--text-main);
             box-shadow: 0 4px 12px rgba(0,0,0,0.02);
@@ -242,10 +241,9 @@
         .icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
         .icon-btn.active-state { background: var(--accent-color); color: white; }
 
-        /* Bottom History Chat */
         .chat-display {
-            padding: 16px 20px; border-radius: var(--border-radius-lg);
-            min-height: 70px; max-height: 100px; overflow-y: auto;
+            padding: 12px 20px; border-radius: var(--border-radius-lg);
+            min-height: 60px; max-height: 80px; overflow-y: auto;
             font-size: 14px;
         }
 
@@ -267,9 +265,8 @@
         .bar:nth-child(4) { height: 60%; animation-delay: 0.6s; }
         @keyframes wave { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
 
-        /* Input Area */
         .input-group {
-            display: flex; gap: 12px; padding: 10px;
+            display: flex; gap: 12px; padding: 8px;
             border-radius: var(--border-radius-lg); align-items: center;
         }
 
@@ -285,8 +282,8 @@
         }
 
         @media (max-width: 768px) {
-            .app-layout { padding: 10px; gap: 10px; }
-            .video-section { min-height: 350px; }
+            .app-layout { padding: 8px; gap: 8px; }
+            .video-section { min-height: 0; }
             #lesson-panel { width: 95%; bottom: 10px; }
         }
     </style>
@@ -388,6 +385,9 @@
            1. THREE.JS ENVIRONMENT SETUP
            ========================================== */
         let scene, camera, renderer, controls, clock, modelGroup;
+        let jawBone = null; // Automated LipSync mapping
+        let leftEyeBone = null, rightEyeBone = null; // Organic Blinking tracking
+        
         const container = document.getElementById('canvas-container');
         const wrapper = document.getElementById('video-wrapper');
         const loaderUI = document.getElementById('loader');
@@ -395,10 +395,11 @@
 
         let isTeachingMode = false;
         let isSpeaking = false;
+        let mouthOpenIntensity = 0;
         const uiModeBadge = document.getElementById('ui-mode-badge');
         
-        // Permanent centralized target tracker mapping directly to character's middle torso/chest
-        const absoluteCenterTarget = new THREE.Vector3(0, 0.95, 0);
+        // Dynamic target matching character's middle torso precisely
+        const absoluteCenterTarget = new THREE.Vector3(0, 1.1, 0);
 
         init3D();
         animate3D();
@@ -409,10 +410,10 @@
             clock = new THREE.Clock();
 
             const aspect = container.clientWidth / container.clientHeight;
-            camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 100);
+            camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
             
-            // Camera position optimized to see maximum full body structure elegantly
-            camera.position.set(0, 1.1, 2.5);
+            // Adjusted position to automatically keep full-body inside mobile layouts
+            updateCameraPosition();
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
             renderer.setSize(container.clientWidth, container.clientHeight);
@@ -422,31 +423,24 @@
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             container.appendChild(renderer.domElement);
 
-            // Cinematic Studio Light Setup for Full View Environment
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
             scene.add(ambientLight);
 
-            // Strong Main Highlight Light
-            const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
+            const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
             keyLight.position.set(2, 4, 4);
             keyLight.castShadow = true;
-            keyLight.shadow.mapSize.width = 2048;
-            keyLight.shadow.mapSize.height = 2048;
             scene.add(keyLight);
 
-            // Balanced Soft Contrast Fill
-            const fillLight = new THREE.DirectionalLight(0xebf3ff, 1.6);
+            const fillLight = new THREE.DirectionalLight(0xebf3ff, 1.4);
             fillLight.position.set(-3, 2, 3);
             scene.add(fillLight);
 
-            // Professional Rim light for pop-up definition
-            const rimLight = new THREE.PointLight(0x4499ff, 3.0, 10);
+            const rimLight = new THREE.PointLight(0x4499ff, 2.5, 10);
             rimLight.position.set(0, 4, -4);
             scene.add(rimLight);
 
-            // Soft shadow ground plate
             const planeGeo = new THREE.PlaneGeometry(20, 20);
-            const planeMat = new THREE.ShadowMaterial({ opacity: 0.08 });
+            const planeMat = new THREE.ShadowMaterial({ opacity: 0.06 });
             const plane = new THREE.Mesh(planeGeo, planeMat);
             plane.rotation.x = -Math.PI / 2;
             plane.position.y = 0;
@@ -460,13 +454,12 @@
             controls.maxDistance = 6;
             controls.enablePan = false;
             controls.autoRotate = true;
-            controls.autoRotateSpeed = 0.6;
+            controls.autoRotateSpeed = 0.4;
             controls.target.copy(absoluteCenterTarget);
 
             modelGroup = new THREE.Group();
             scene.add(modelGroup);
 
-            // Load Model with progress metrics
             const loader = new GLTFLoader();
             loader.load('./teacher.glb', function (gltf) {
                 const model = gltf.scene;
@@ -477,23 +470,24 @@
                         child.receiveShadow = true;
                         if(child.material) child.material.roughness = 0.4;
                     }
+                    // Procedural LipSync: Automatic standard bone structure scanner lookup
+                    if (child.isBone && (child.name.toLowerCase().includes('jaw') || child.name.toLowerCase().includes('mouth'))) {
+                        jawBone = child;
+                    }
+                    if (child.isBone && child.name.toLowerCase().includes('eyelef')) leftEyeBone = child;
+                    if (child.isBone && child.name.toLowerCase().includes('eyerigh')) rightEyeBone = child;
                 });
 
-                // Auto scaling setup normalization
                 const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
                 
-                // Optimized height scaling factors to guarantee entire character visibility inside viewframes
-                const targetHeight = 1.9;
+                // Keep model beautifully structured inside viewport grids
+                const targetHeight = 1.75;
                 const scale = targetHeight / size.y;
                 model.scale.set(scale, scale, scale);
-
-                const refreshedBox = new THREE.Box3().setFromObject(model);
-                const refreshedCenter = refreshedBox.getCenter(new THREE.Vector3());
                 
-                // Lock character precisely onto center lines grid coordinates
                 model.position.x = 0; 
-                model.position.y = -refreshedBox.min.y; 
+                model.position.y = 0; 
                 model.position.z = 0;
 
                 modelGroup.add(model);
@@ -516,30 +510,70 @@
                 const width = container.clientWidth;
                 const height = container.clientHeight;
                 camera.aspect = width / height;
+                updateCameraPosition();
                 camera.updateProjectionMatrix();
                 renderer.setSize(width, height);
             });
             resizeObserver.observe(container);
         }
 
+        function updateCameraPosition() {
+            if (container.clientWidth < 768) {
+                camera.position.set(0, 1.1, 3.4); // Mobile layout tracking
+            } else {
+                camera.position.set(0, 1.2, 2.4); // Desktop layout tracking
+            }
+        }
+
         function animate3D() {
             requestAnimationFrame(animate3D);
             const time = clock.getElapsedTime();
 
-            // Always target the character's core structural center point natively without shifts
             controls.target.lerp(absoluteCenterTarget, 0.1);
 
-            if (modelGroup) {
+            if (modelGroup && modelGroup.children.length > 0) {
                 if (isSpeaking) {
-                    // Fluent breathing metrics scaled down to perfectly balance talking animations organically
-                    modelGroup.position.y = (Math.sin(time * 3.0) * 0.01) - 0.002;
-                    modelGroup.rotation.y = Math.sin(time * 1.5) * 0.015;
-                    modelGroup.children[0].position.z = Math.sin(time * 50) * 0.0015;
+                    // Fluent body breathing micro-animations
+                    modelGroup.position.y = (Math.sin(time * 3.5) * 0.006);
+                    modelGroup.rotation.y = Math.sin(time * 1.8) * 0.015;
+                    
+                    // Procedural Audio LipSync: Simulates complex human phonetic frequencies
+                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, Math.abs(Math.sin(time * 24)) * 0.25, 0.4);
                 } else {
-                    // Natural structural Idle Loop values
-                    modelGroup.position.y = Math.sin(time * 1.2) * 0.008;
+                    // Standard idle system loops
+                    modelGroup.position.y = Math.sin(time * 1.2) * 0.005;
                     modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
+                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, 0, 0.2);
                 }
+
+                // Inject processing data metrics into detected bone structures natively
+                if (jawBone) {
+                    jawBone.rotation.x = mouthOpenIntensity; 
+                } else {
+                    // Fallback morphological scanner mesh backup map system
+                    modelGroup.traverse((child) => {
+                        if (child.morphTargetInfluences && child.morphTargetDictionary) {
+                            const jawOpenIdx = child.morphTargetDictionary['jawOpen'] || child.morphTargetDictionary['mouth_open'];
+                            if (jawOpenIdx !== undefined) {
+                                child.morphTargetInfluences[jawOpenIdx] = mouthOpenIntensity * 3.0;
+                            }
+                        }
+                    });
+                }
+
+                // Automatic organic eye blinking loops
+                let blinkValue = 0;
+                if (Math.floor(time) % 4 === 0 && (time % 4) < 0.15) {
+                    blinkValue = 1.0;
+                }
+                modelGroup.traverse((child) => {
+                    if (child.morphTargetInfluences && child.morphTargetDictionary) {
+                        const blinkL = child.morphTargetDictionary['eyeBlinkLeft'] || child.morphTargetDictionary['blink_left'];
+                        const blinkR = child.morphTargetDictionary['eyeBlinkRight'] || child.morphTargetDictionary['blink_right'];
+                        if (blinkL !== undefined) child.morphTargetInfluences[blinkL] = blinkValue;
+                        if (blinkR !== undefined) child.morphTargetInfluences[blinkR] = blinkValue;
+                    }
+                });
             }
 
             controls.autoRotate = document.getElementById('btn-rotate').classList.contains('active-state');
@@ -590,6 +624,7 @@
             uiModeBadge.style.background = "var(--accent-glow)";
             uiModeBadge.style.color = "var(--accent-color)";
             window.speechSynthesis.cancel();
+            isSpeaking = false;
         }
 
         /* ==========================================
@@ -674,7 +709,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         systemInstruction: {
-                            parts: [{ text: "You are Dr. Nova, a elite AI virtual teacher. Format responses into a single brief clean actionable explanation paragraph. Do not use asterisks or markdown structures." }]
+                            parts: [{ text: "You are Dr. Nova, an elite AI virtual teacher. Format responses into a single brief clean actionable explanation paragraph. Do not use asterisks or markdown structures." }]
                         },
                         contents: [{ parts: [{ text: query }] }]
                     })
