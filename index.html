@@ -17,7 +17,7 @@
             --text-main: #1D1D1F;
             --text-muted: #86868B;
             --accent-color: #0066CC;
-            --accent-glow: rgba(0, 102, 204, 0.1) ;
+            --accent-glow: rgba(0, 102, 204, 0.1);
             --danger: #FF3B30;
             --border-radius-lg: 24px;
             --border-radius-md: 16px;
@@ -49,6 +49,52 @@
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(0, 0, 0, 0.05);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+        }
+
+        /* ==========================================
+           LANGUAGE SELECTION OVERLAY
+           ========================================== */
+        #lang-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--surface-solid);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            transition: opacity 0.5s ease;
+        }
+
+        .lang-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+            text-align: center;
+        }
+
+        .lang-options {
+            display: flex;
+            gap: 20px;
+        }
+
+        .lang-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px var(--accent-glow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .lang-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(0, 102, 204, 0.3);
         }
 
         /* ==========================================
@@ -230,10 +276,9 @@
         }
 
         /* Waveform Animation */
-        .waveform { display: none; align-items: center; gap: 2px; height: 10px; }
-        .waveform.active { display: flex; }
+        .waveform { display: flex; align-items: center; gap: 2px; height: 10px; }
         .bar {
-            width: 2px; background-color: var(--accent-color); border-radius: 2px;
+            width: 2px; background-color: var(--danger); border-radius: 2px;
             animation: wave 1s ease-in-out infinite;
         }
         .bar:nth-child(1) { height: 40%; animation-delay: 0.0s; }
@@ -241,10 +286,13 @@
         .bar:nth-child(3) { height: 100%; animation-delay: 0.4s; }
         .bar:nth-child(4) { height: 60%; animation-delay: 0.6s; }
         @keyframes wave { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+        
+        .waveform.speaking .bar { background-color: var(--accent-color); }
 
         .input-group {
             display: flex; gap: 8px; padding: 6px;
             border-radius: var(--border-radius-lg); align-items: center;
+            opacity: 0.6; pointer-events: none; /* User shouldn't need to type now */
         }
 
         .input-field {
@@ -262,6 +310,7 @@
             .app-layout { padding: 12px; gap: 12px; }
             .video-section { height: 48vh; }
             #lesson-panel { width: 94%; bottom: 12px; }
+            .lang-options { flex-direction: column; width: 80%; }
         }
     </style>
 
@@ -275,6 +324,14 @@
     </script>
 </head>
 <body>
+
+    <div id="lang-overlay">
+        <div class="lang-title">Choose your language<br><span style="font-size: 20px; color: var(--text-muted);">अपनी भाषा चुनें</span></div>
+        <div class="lang-options">
+            <button class="lang-btn" onclick="startGame('en-US')">English</button>
+            <button class="lang-btn" onclick="startGame('hi-IN')">हिंदी (Hindi)</button>
+        </div>
+    </div>
 
     <div class="app-layout">
         
@@ -329,20 +386,16 @@
 
             <div class="chat-display glass">
                 <div class="ai-label">
-                    Status 
+                    <span id="status-text">LISTENING</span> 
                     <div class="waveform" id="audio-wave">
                         <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
                     </div>
                 </div>
-                <p id="chat-text" style="color: var(--text-muted);">Classroom initialized. Awaiting questions...</p>
+                <p id="chat-text" style="color: var(--text-muted);">Please select a language to start...</p>
             </div>
 
-            <div class="input-group glass">
-                <button class="icon-btn" id="btn-mic" title="Voice Input">
-                    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
-                </button>
-                <input type="text" class="input-field" id="chat-input" placeholder="Ask anything about science, history, coding...">
-                <button class="send-btn" id="btn-send">Ask Teacher</button>
+            <div class="input-group glass" style="display:none;">
+                <input type="text" class="input-field" id="chat-input" placeholder="Always listening... Just speak!">
             </div>
 
         </section>
@@ -357,6 +410,32 @@
            IMPORTANT: API KEY SYSTEM CONFIGURATION
            ========================================== */
         const GEMINI_API_KEY = "AIzaSyCD6Zs9b3fASvxfqeVYWWhqZam27uZKsqQ";
+        
+        let currentLangCode = 'en-US';
+        let geminiPromptLang = 'English';
+
+        // Make startGame global so HTML buttons can access it
+        window.startGame = function(langCode) {
+            document.getElementById('lang-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('lang-overlay').style.display = 'none';
+            }, 500);
+
+            currentLangCode = langCode;
+            geminiPromptLang = langCode === 'hi-IN' ? 'Hindi' : 'English';
+            
+            if (recognition) {
+                recognition.lang = currentLangCode;
+            }
+
+            const greetingText = langCode === 'hi-IN' ? "मैं आपकी कैसे मदद कर सकता हूँ?" : "How can I help you?";
+            
+            // Start continuous listening mechanism
+            document.getElementById('chat-text').innerText = langCode === 'hi-IN' ? "सुन रहा हूँ... अपना सवाल पूछें।" : "Listening... Ask your question.";
+            
+            // Initial Greeting
+            speakText(greetingText);
+        }
 
         /* ==========================================
            1. THREE.JS ENVIRONMENT SETUP
@@ -366,7 +445,7 @@
         // Bone Animation Variables
         let jawBone = null; 
         let bodyBones = {
-            spine: null,
+            spine: null, neck: null, head: null,
             leftArm: null, rightArm: null,
             leftForeArm: null, rightForeArm: null,
             leftUpLeg: null, rightUpLeg: null
@@ -382,6 +461,12 @@
         let isSpeaking = false;
         let mouthOpenIntensity = 0;
         
+        // Dynamic Gesture Targets for natural human movement
+        let gestureTargets = {
+            lArmZ: 0, rArmZ: 0, lForeArmX: 0, rForeArmX: 0, spineY: 0, neckX: 0
+        };
+        let lastGestureTime = 0;
+        
         const absoluteCenterTarget = new THREE.Vector3(0, 1.1, 0);
         const uiModeBadge = document.getElementById('ui-mode-badge');
 
@@ -395,7 +480,6 @@
 
             const aspect = container.clientWidth / container.clientHeight;
             camera = new THREE.PerspectiveCamera(42, aspect, 0.1, 100);
-            
             updateCameraPosition();
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
@@ -424,7 +508,6 @@
             modelGroup = new THREE.Group();
             scene.add(modelGroup);
 
-            // Safety Fallback Timer to clear loading UI if network stalls
             const fallbackTimeout = setTimeout(() => {
                 if (loaderUI && loaderUI.style.display !== 'none') {
                     loaderUI.style.opacity = '0';
@@ -447,12 +530,13 @@
                         }
                     }
                     if (child.isBone) {
-                        // Store default initial rotation for clean animations
                         initialBoneRotations.set(child.uuid, child.rotation.clone());
                         
                         const name = child.name.toLowerCase();
                         if (name.includes('jaw') || name.includes('mouth')) jawBone = child;
                         else if (name.includes('spine') || name.includes('chest')) bodyBones.spine = child;
+                        else if (name.includes('neck')) bodyBones.neck = child;
+                        else if (name.includes('head')) bodyBones.head = child;
                         else if (name.includes('leftarm') || name.includes('left_arm')) bodyBones.leftArm = child;
                         else if (name.includes('rightarm') || name.includes('right_arm')) bodyBones.rightArm = child;
                         else if (name.includes('leftforearm') || name.includes('left_forearm')) bodyBones.leftForeArm = child;
@@ -464,7 +548,6 @@
 
                 const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
-                
                 const targetHeight = 2.2;
                 const scale = targetHeight / (size.y || 1);
                 model.scale.set(scale, scale, scale);
@@ -507,7 +590,6 @@
             resizeObserver.observe(container);
         }
 
-        // --- ENHANCED ADDITIONAL 15% ZOOM OUT POSITIONING ---
         function updateCameraPosition() {
             if (container.clientWidth < 768) {
                 camera.position.set(0, 1.2, 12.65); 
@@ -524,45 +606,65 @@
 
             if (modelGroup && modelGroup.children.length > 0) {
                 
-                // Audio Responsive Animation Drivers
-                const wave1 = Math.sin(time * 3);
-                const wave2 = Math.cos(time * 2.5);
                 const breath = Math.sin(time * 1.5);
 
                 if (isSpeaking) {
-                    // Global Body Bobbing
-                    modelGroup.position.y = (Math.sin(time * 3.5) * 0.005) - 0.5; 
-                    modelGroup.rotation.y = Math.sin(time * 1.5) * 0.012;
-                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, Math.abs(Math.sin(time * 24)) * 0.25, 0.45);
-
-                    // Professional Hand & Leg Gestures
-                    if(bodyBones.leftArm) bodyBones.leftArm.rotation.z = THREE.MathUtils.lerp(bodyBones.leftArm.rotation.z, initialBoneRotations.get(bodyBones.leftArm.uuid).z + wave1 * 0.12 + 0.05, 0.1);
-                    if(bodyBones.rightArm) bodyBones.rightArm.rotation.z = THREE.MathUtils.lerp(bodyBones.rightArm.rotation.z, initialBoneRotations.get(bodyBones.rightArm.uuid).z - wave2 * 0.12 - 0.05, 0.1);
-                    if(bodyBones.leftForeArm) bodyBones.leftForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.leftForeArm.rotation.x, initialBoneRotations.get(bodyBones.leftForeArm.uuid).x - Math.abs(wave1) * 0.25, 0.1);
-                    if(bodyBones.rightForeArm) bodyBones.rightForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.rightForeArm.rotation.x, initialBoneRotations.get(bodyBones.rightForeArm.uuid).x - Math.abs(wave2) * 0.25, 0.1);
+                    // --- NATURAL LIP SYNC (Stacked sine waves for realistic syllable simulation) ---
+                    // Instead of a single boring wave, mix different fast frequencies
+                    const speechWave1 = Math.sin(time * 25);
+                    const speechWave2 = Math.cos(time * 18);
+                    const speechWave3 = Math.sin(time * 38);
                     
-                    if(bodyBones.spine) bodyBones.spine.rotation.y = THREE.MathUtils.lerp(bodyBones.spine.rotation.y, initialBoneRotations.get(bodyBones.spine.uuid).y + wave1 * 0.03, 0.1);
+                    // Creates an irregular pattern that looks like forming different words
+                    const combinedWave = Math.abs((speechWave1 + speechWave2 + speechWave3) / 3);
+                    const targetMouthOpen = combinedWave * 0.45 + 0.05; 
+                    
+                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, targetMouthOpen, 0.4);
+
+                    // --- NATURAL BODY & HAND GESTURES ---
+                    // Randomly update gesture targets every 1.2 to 2.5 seconds to look human
+                    if (time - lastGestureTime > (Math.random() * 1.3 + 1.2)) {
+                        lastGestureTime = time;
+                        gestureTargets.lArmZ = Math.random() * 0.25 + 0.05;
+                        gestureTargets.rArmZ = -(Math.random() * 0.25 + 0.05);
+                        gestureTargets.lForeArmX = -(Math.random() * 0.6);
+                        gestureTargets.rForeArmX = -(Math.random() * 0.6);
+                        gestureTargets.spineY = (Math.random() - 0.5) * 0.15;
+                        gestureTargets.neckX = (Math.random() - 0.5) * 0.1;
+                    }
+
+                    // Global body subtle movement while explaining
+                    modelGroup.position.y = (Math.sin(time * 3.5) * 0.005) - 0.5; 
+
+                    // Smoothly Lerp bones to the randomized human targets
+                    if(bodyBones.leftArm) bodyBones.leftArm.rotation.z = THREE.MathUtils.lerp(bodyBones.leftArm.rotation.z, initialBoneRotations.get(bodyBones.leftArm.uuid).z + gestureTargets.lArmZ, 0.08);
+                    if(bodyBones.rightArm) bodyBones.rightArm.rotation.z = THREE.MathUtils.lerp(bodyBones.rightArm.rotation.z, initialBoneRotations.get(bodyBones.rightArm.uuid).z + gestureTargets.rArmZ, 0.08);
+                    if(bodyBones.leftForeArm) bodyBones.leftForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.leftForeArm.rotation.x, initialBoneRotations.get(bodyBones.leftForeArm.uuid).x + gestureTargets.lForeArmX, 0.08);
+                    if(bodyBones.rightForeArm) bodyBones.rightForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.rightForeArm.rotation.x, initialBoneRotations.get(bodyBones.rightForeArm.uuid).x + gestureTargets.rForeArmX, 0.08);
+                    
+                    if(bodyBones.spine) bodyBones.spine.rotation.y = THREE.MathUtils.lerp(bodyBones.spine.rotation.y, initialBoneRotations.get(bodyBones.spine.uuid).y + gestureTargets.spineY, 0.05);
+                    if(bodyBones.neck) bodyBones.neck.rotation.x = THREE.MathUtils.lerp(bodyBones.neck.rotation.x, initialBoneRotations.get(bodyBones.neck.uuid).x + gestureTargets.neckX, 0.05);
                     
                     if(bodyBones.leftUpLeg) bodyBones.leftUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.leftUpLeg.rotation.z, initialBoneRotations.get(bodyBones.leftUpLeg.uuid).z + breath * 0.015, 0.1);
                     if(bodyBones.rightUpLeg) bodyBones.rightUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.rightUpLeg.rotation.z, initialBoneRotations.get(bodyBones.rightUpLeg.uuid).z + breath * 0.015, 0.1);
 
                 } else {
-                    // Idle Breathing State
+                    // IDLE STATE (Breathing gently, arms resting down)
                     modelGroup.position.y = (Math.sin(time * 1.2) * 0.004) - 0.5; 
                     modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
                     mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, 0, 0.2);
 
-                    // Smooth Return to Idle Pose
                     if(bodyBones.leftArm) bodyBones.leftArm.rotation.z = THREE.MathUtils.lerp(bodyBones.leftArm.rotation.z, initialBoneRotations.get(bodyBones.leftArm.uuid).z + breath * 0.02, 0.05);
                     if(bodyBones.rightArm) bodyBones.rightArm.rotation.z = THREE.MathUtils.lerp(bodyBones.rightArm.rotation.z, initialBoneRotations.get(bodyBones.rightArm.uuid).z - breath * 0.02, 0.05);
                     if(bodyBones.leftForeArm) bodyBones.leftForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.leftForeArm.rotation.x, initialBoneRotations.get(bodyBones.leftForeArm.uuid).x, 0.05);
                     if(bodyBones.rightForeArm) bodyBones.rightForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.rightForeArm.rotation.x, initialBoneRotations.get(bodyBones.rightForeArm.uuid).x, 0.05);
                     if(bodyBones.spine) bodyBones.spine.rotation.y = THREE.MathUtils.lerp(bodyBones.spine.rotation.y, initialBoneRotations.get(bodyBones.spine.uuid).y, 0.05);
+                    if(bodyBones.neck) bodyBones.neck.rotation.x = THREE.MathUtils.lerp(bodyBones.neck.rotation.x, initialBoneRotations.get(bodyBones.neck.uuid).x, 0.05);
                     if(bodyBones.leftUpLeg) bodyBones.leftUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.leftUpLeg.rotation.z, initialBoneRotations.get(bodyBones.leftUpLeg.uuid).z, 0.05);
                     if(bodyBones.rightUpLeg) bodyBones.rightUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.rightUpLeg.rotation.z, initialBoneRotations.get(bodyBones.rightUpLeg.uuid).z, 0.05);
                 }
 
-                // Jaw & Blink Mechanics (Unchanged)
+                // Apply Jaw Rotation or Morph Target
                 if (jawBone) {
                     jawBone.rotation.x = mouthOpenIntensity; 
                 } else {
@@ -576,9 +678,12 @@
                     });
                 }
 
+                // Natural Blinking
                 let blinkValue = 0;
                 if (Math.floor(time) % 5 === 0 && (time % 5) < 0.15) {
                     blinkValue = 1.0;
+                } else if (Math.floor(time) % 8 === 0 && (time % 8) < 0.15) {
+                    blinkValue = 1.0; // Double blink variance
                 }
                 modelGroup.traverse((child) => {
                     if (child.morphTargetInfluences && child.morphTargetDictionary) {
@@ -632,6 +737,7 @@
             uiModeBadge.innerText = "TEACHING MODE";
             uiModeBadge.style.background = "rgba(255, 59, 48, 0.1)";
             uiModeBadge.style.color = "var(--danger)";
+            document.getElementById('status-text').innerText = "SPEAKING";
         }
 
         function setIdleMode() {
@@ -640,79 +746,74 @@
             uiModeBadge.innerText = "IDLE MODE";
             uiModeBadge.style.background = "var(--accent-glow)";
             uiModeBadge.style.color = "var(--accent-color)";
+            document.getElementById('status-text').innerText = "LISTENING";
             window.speechSynthesis.cancel();
             isSpeaking = false;
         }
 
         /* ==========================================
-           4. CHAT PIPELINES ENGINE
+           4. CHAT PIPELINES ENGINE (ALWAYS LISTENING)
            ========================================== */
-        const chatInput = document.getElementById('chat-input');
-        const btnSend = document.getElementById('btn-send');
-        const btnMic = document.getElementById('btn-mic');
         const chatText = document.getElementById('chat-text');
         const audioWave = document.getElementById('audio-wave');
         const lessonBody = document.getElementById('lesson-body');
-        const lessonPanel = document.getElementById('lesson-panel');
 
-        let isListening = false;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
+        let isEngineProcessing = false;
         
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            recognition.continuous = false;
+            recognition.continuous = true; // Always listen
             recognition.interimResults = false;
-            recognition.lang = 'en-US';
 
             recognition.onstart = () => {
-                isListening = true;
-                btnMic.classList.add('active-state');
-                chatInput.placeholder = "Listening active...";
+                // Mic started
             };
+
             recognition.onresult = (event) => {
-                const transcript = event.results.transcript;
-                chatInput.value = transcript;
-                handleUserQuery(transcript);
+                // If AI is currently talking or processing, ignore what it hears
+                if (isSpeaking || isEngineProcessing) return;
+
+                const last = event.results.length - 1;
+                const transcript = event.results[last][0].transcript.trim();
+                
+                if (transcript.length > 2) {
+                    handleUserQuery(transcript);
+                }
             };
-            recognition.onerror = () => resetMic();
-            recognition.onend = () => resetMic();
+
+            recognition.onerror = (e) => {
+                // Restart quietly if no-speech timeout happens
+            };
+
+            recognition.onend = () => {
+                // Keep the mic always alive unless the page unloads
+                if (!isSpeaking) {
+                    try { recognition.start(); } catch(e) {}
+                }
+            };
         } else {
-            btnMic.style.display = 'none';
+            chatText.innerHTML = "Your browser doesn't support Voice AI. Please use Chrome.";
         }
 
-        function resetMic() {
-            isListening = false;
-            btnMic.classList.remove('active-state');
-            chatInput.placeholder = "Ask anything about science, history, coding...";
-        }
-
-        btnMic.addEventListener('click', () => {
-            if (!recognition) return;
-            isListening ? recognition.stop() : recognition.start();
-        });
-
-        btnSend.addEventListener('click', () => {
-            const query = chatInput.value.trim();
-            if (query) handleUserQuery(query);
-        });
-
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const query = chatInput.value.trim();
-                if (query) handleUserQuery(query);
+        // Keep mic alive periodically fallback
+        setInterval(() => {
+            if (recognition && !isSpeaking && !isEngineProcessing) {
+                try { recognition.start(); } catch(e) {}
             }
-        });
+        }, 3000);
 
         async function handleUserQuery(query) {
-            chatInput.value = "";
-            chatText.innerHTML = `<strong>You asked:</strong> ${query}`;
+            isEngineProcessing = true;
+            try { recognition.stop(); } catch(e){} // Stop mic to avoid self-hearing
+            
+            chatText.innerHTML = `<strong>You:</strong> ${query}`;
             
             setTeachingMode();
-            lessonBody.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Processing request stream...</span>`;
+            lessonBody.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Thinking...</span>`;
 
             try {
-                // FIXED: Using stable REST API call directly instead of broken SDK import inside async function
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
                 const response = await fetch(url, {
@@ -720,7 +821,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         systemInstruction: {
-                            parts: [{ text: "You are Mr Amrit ,an elite AI virtual teacher. Format responses into a single brief clean actionable explanation paragraph. Do not use asterisks or markdown structures." }]
+                            parts: [{ text: `You are Mr Amrit, an elite AI virtual teacher. Format responses into a single brief clean actionable explanation paragraph. Do not use asterisks or markdown. Always reply strictly in ${geminiPromptLang} language.` }]
                         },
                         contents: [{ parts: [{ text: query }] }]
                     })
@@ -729,16 +830,16 @@
                 if (!response.ok) throw new Error("Network Response Fail");
                 
                 const data = await response.json();
-                
-                // FIXED: Corrected data parsing layout mapping for Gemini REST response structure
                 const aiResponseText = data.candidates[0].content.parts[0].text;
                 
                 await streamResponseIntoCards(aiResponseText);
 
             } catch (error) {
                 console.error(error);
-                chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed. Using engine fallback.</strong>`;
+                chatText.innerHTML = `<strong style="color:var(--danger)">Connection failed. Trying again...</strong>`;
                 setIdleMode();
+                isEngineProcessing = false;
+                try { recognition.start(); } catch(e){}
             }
         }
 
@@ -757,35 +858,48 @@
                 structuredOutput += token;
                 card.innerHTML = structuredOutput;
                 lessonBody.scrollTop = lessonBody.scrollHeight;
-                await new Promise(resolve => setTimeout(resolve, 25));
+                await new Promise(resolve => setTimeout(resolve, 35));
             }
         }
 
         function speakText(text) {
-            if (!window.speechSynthesis) return;
+            if (!window.speechSynthesis) {
+                isEngineProcessing = false;
+                try { recognition.start(); } catch(e){}
+                return;
+            }
             window.speechSynthesis.cancel();
+            try { recognition.stop(); } catch(e){} // Stop listening while talking
 
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.05;
+            utterance.rate = 1.0;
             utterance.pitch = 1.0;
+            utterance.lang = currentLangCode;
             
             const voices = window.speechSynthesis.getVoices();
-            const chosenVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google US English') || v.lang.startsWith('en'));
+            // Try to find a voice matching the chosen language
+            const chosenVoice = voices.find(v => v.lang.includes(currentLangCode.split('-')[0])) || voices[0];
             if(chosenVoice) utterance.voice = chosenVoice;
 
             utterance.onstart = () => {
                 isSpeaking = true;
-                audioWave.classList.add('active');
+                audioWave.classList.add('speaking');
             };
             
             utterance.onend = () => {
                 isSpeaking = false;
-                audioWave.classList.remove('active');
+                isEngineProcessing = false;
+                audioWave.classList.remove('speaking');
+                document.getElementById('status-text').innerText = "LISTENING";
+                // Resume listening immediately after AI finishes speaking
+                try { recognition.start(); } catch(e){}
             };
 
             utterance.onerror = () => {
                 isSpeaking = false;
-                audioWave.classList.remove('active');
+                isEngineProcessing = false;
+                audioWave.classList.remove('speaking');
+                try { recognition.start(); } catch(e){}
             };
 
             window.speechSynthesis.speak(utterance);
