@@ -712,19 +712,8 @@
             lessonBody.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Processing request stream...</span>`;
 
             try {
-                // FIXED: Updated to Gemini 3.5 Flash Model
-                import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({});
-
-async function main() {
-  const response = await ai.models.generateContent({
-    model: "gemini-3.5-flash",
-    
-  });
-  console.log(response.text);
-}
-
+                // FIXED: Using stable REST API call directly instead of broken SDK import inside async function
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -740,7 +729,9 @@ async function main() {
                 if (!response.ok) throw new Error("Network Response Fail");
                 
                 const data = await response.json();
-                const aiResponseText = data.candidates.content.parts.text;
+                
+                // FIXED: Corrected data parsing layout mapping for Gemini REST response structure
+                const aiResponseText = data.candidates[0].content.parts[0].text;
                 
                 await streamResponseIntoCards(aiResponseText);
 
