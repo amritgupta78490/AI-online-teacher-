@@ -356,7 +356,7 @@
         /* ==========================================
            IMPORTANT: API KEY SYSTEM CONFIGURATION
            ========================================== */
-        const GEMINI_API_KEY = "AIzaSyB7JR9k0tGtk451y3Rg9nw83TUYP5tkxoQ";
+        const GEMINI_API_KEY = "AIzaSyCD6Zs9b3fASvxfqeVYWWhqZam27uZKsqQ";
 
         /* ==========================================
            1. THREE.JS ENVIRONMENT SETUP
@@ -713,14 +713,14 @@
 
             try {
                 // FIXED: Using stable REST API call directly instead of broken SDK import inside async function
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=${GEMINI_API_KEY}`;
 
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         systemInstruction: {
-                            parts: [{ text: "You are Dr. Nova, an elite AI virtual teacher. Format responses into a single brief clean actionable explanation paragraph. Do not use asterisks or markdown structures." }]
+                            parts: [{ text: "You are Mr Amrit ,an elite AI virtual teacher. Format responses into a single brief clean actionable explanation paragraph. Do not use asterisks or markdown structures." }]
                         },
                         contents: [{ parts: [{ text: query }] }]
                     })
