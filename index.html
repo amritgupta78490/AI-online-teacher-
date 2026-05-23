@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mr. Amrit - Virtual Classroom</title>
+    <title>AI Teacher - Mr. Amrit Virtual Classroom</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
@@ -262,15 +262,10 @@
 
         .icon-btn:hover { transform: translateY(-2px); }
         .icon-btn svg { width: 18px; height: 18px; fill: currentColor; }
-        .icon-btn.active-state { background: var(--text-main); color: white; }
         
-        /* Dedicated styles for Mic Button */
-        #btn-mic.listening-active { background: var(--danger); color: white; animation: micPulse 1.5s infinite; }
-        @keyframes micPulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
-        }
+        /* Removed background change on click for active-state to make it look like a trigger */
+        .icon-btn.active-state { background: var(--accent-color); color: white; }
+        .icon-btn.active-state svg { fill: white; }
 
         .chat-display {
             padding: 12px 16px; border-radius: var(--border-radius-lg);
@@ -284,10 +279,9 @@
         }
 
         /* Waveform Animation */
-        .waveform { display: flex; align-items: center; gap: 2px; height: 10px; opacity: 0; transition: opacity 0.2s;}
-        .waveform.visible { opacity: 1; }
+        .waveform { display: flex; align-items: center; gap: 2px; height: 10px; opacity: 0; transition: opacity 0.3s; }
         .bar {
-            width: 2px; background-color: var(--accent-color); border-radius: 2px;
+            width: 2px; background-color: var(--danger); border-radius: 2px;
             animation: wave 1s ease-in-out infinite;
         }
         .bar:nth-child(1) { height: 40%; animation-delay: 0.0s; }
@@ -295,6 +289,11 @@
         .bar:nth-child(3) { height: 100%; animation-delay: 0.4s; }
         .bar:nth-child(4) { height: 60%; animation-delay: 0.6s; }
         @keyframes wave { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+        
+        .waveform.speaking { opacity: 1; }
+        .waveform.speaking .bar { background-color: var(--accent-color); }
+        .waveform.listening { opacity: 1; }
+        .waveform.listening .bar { background-color: var(--danger); }
 
         @media (max-width: 768px) {
             .app-layout { padding: 12px; gap: 12px; }
@@ -345,7 +344,7 @@
                 
                 <div id="loader">
                     <div class="spinner"></div>
-                    <div id="loading-status" style="font-size: 13px; color: #666; font-weight: 500;">Loading Mr. Amrit Engine...</div>
+                    <div id="loading-status" style="font-size: 13px; color: #666; font-weight: 500;">Loading Mr. Amrit...</div>
                 </div>
 
                 <div id="canvas-container"></div>
@@ -366,11 +365,8 @@
                 <button class="icon-btn" id="btn-fullscreen" title="Fullscreen Class">
                     <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
                 </button>
-                <button class="icon-btn active-state" id="btn-rotate" title="Toggle Auto-Rotate">
-                    <svg viewBox="0 0 24 24"><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5s2.24-5 5-5v3l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02zM13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03zm3.44-2.43l1.41 1.41c.91-1.16 1.46-2.51 1.63-3.9h-2.02c-.14.87-.48 1.72-1.02 2.49z"/></svg>
-                </button>
-                <button class="icon-btn" id="btn-mic" title="Push to Talk">
-                    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                <button class="icon-btn" id="btn-mic" title="Click to Speak">
+                    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
                 </button>
                 <button class="icon-btn active-state" id="btn-sound" title="Toggle AI Voice">
                     <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
@@ -379,7 +375,7 @@
 
             <div class="chat-display glass">
                 <div class="ai-label">
-                    <span id="status-text">SYSTEM READY</span> 
+                    <span id="status-text">IDLE</span> 
                     <div class="waveform" id="audio-wave">
                         <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
                     </div>
@@ -398,11 +394,12 @@
         /* ==========================================
            IMPORTANT: API KEY SYSTEM CONFIGURATION
            ========================================== */
-        const GEMINI_API_KEY = "AIzaSyCD6Zs9b3fASvxfqeVYWWhqZam27uZKsqQ"; // Keeping user's original key
+        const GEMINI_API_KEY = "AIzaSyCD6Zs9b3fASvxfqeVYWWhqZam27uZKsqQ";
         
         let currentLangCode = 'en-US';
         let geminiPromptLang = 'English';
 
+        // Make startGame global so HTML buttons can access it
         window.startGame = function(langCode) {
             document.getElementById('lang-overlay').style.opacity = '0';
             setTimeout(() => {
@@ -416,10 +413,11 @@
                 recognition.lang = currentLangCode;
             }
 
-            const initialText = langCode === 'hi-IN' ? "माइक बटन दबाएं और अपना सवाल पूछें।" : "Click the microphone to ask your question.";
-            document.getElementById('chat-text').innerText = initialText;
+            const greetingText = langCode === 'hi-IN' ? "नमस्ते, मैं मिस्टर अमृत हूँ। आप माइक बटन दबाकर अपना सवाल पूछ सकते हैं।" : "Hello, I am Mr. Amrit. Click the mic button to ask me a question.";
             
-            const greetingText = langCode === 'hi-IN' ? "नमस्ते, मैं मिस्टर अमृत हूँ। मैं आपकी कैसे मदद कर सकता हूँ?" : "Hello, I am Mr. Amrit. How can I help you today?";
+            document.getElementById('chat-text').innerText = langCode === 'hi-IN' ? "बोलने के लिए माइक बटन पर क्लिक करें..." : "Click the mic button to speak...";
+            
+            // Initial Greeting
             speakText(greetingText);
         }
 
@@ -428,6 +426,7 @@
            ========================================== */
         let scene, camera, renderer, controls, clock, modelGroup;
         
+        // Bone Animation Variables
         let jawBone = null; 
         let bodyBones = {
             spine: null, neck: null, head: null,
@@ -444,14 +443,13 @@
 
         let isTeachingMode = false;
         let isSpeaking = false;
-        
-        // Accurate Lip Sync Variables
         let mouthOpenIntensity = 0;
-        let targetMouthIntensity = 0;
         
+        // Dynamic Gesture Targets for natural human movement
         let gestureTargets = {
-            lArmZ: 0, rArmZ: 0, lForeArmX: 0, rForeArmX: 0, spineY: 0, neckX: 0
+            lArmZ: 0, rArmZ: 0, lForeArmX: 0, rForeArmX: 0, spineY: 0, neckX: 0, headY: 0
         };
+        let lastGestureTime = 0;
         
         const absoluteCenterTarget = new THREE.Vector3(0, 1.1, 0);
         const uiModeBadge = document.getElementById('ui-mode-badge');
@@ -487,8 +485,8 @@
             controls.minDistance = 1.0;
             controls.maxDistance = 25; 
             controls.enablePan = false;
-            controls.autoRotate = true;
-            controls.autoRotateSpeed = 0.4;
+            // Auto Rotate Removed
+            controls.autoRotate = false;
             controls.target.copy(absoluteCenterTarget);
 
             modelGroup = new THREE.Group();
@@ -554,6 +552,8 @@
                 if (xhr.total) {
                     const percent = Math.round((xhr.loaded / xhr.total) * 100);
                     loadingStatus.innerText = `Loading Mr. Amrit Engine (${percent}%)...`;
+                } else {
+                    loadingStatus.innerText = `Streaming Virtual Headsets...`;
                 }
             },
             function (error) {
@@ -589,32 +589,56 @@
             controls.target.lerp(absoluteCenterTarget, 0.1);
 
             if (modelGroup && modelGroup.children.length > 0) {
+                
                 const breath = Math.sin(time * 1.5);
 
-                // AUDIO-REACTIVE LIP SYNC INTERPOLATION
-                mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, targetMouthIntensity, 0.35);
-
                 if (isSpeaking) {
-                    // Global body subtle movement while explaining
+                    // --- ADVANCED PROCEDURAL LIP SYNC ---
+                    // Creates a much more realistic simulation of human speech (vowels open wide, consonants close)
+                    let speakingSpeed = time * 18;
+                    
+                    // Creates rapid variations mimicking speech syllables
+                    let syllableWave = Math.max(0, Math.sin(speakingSpeed) * Math.cos(speakingSpeed * 0.43) * Math.sin(speakingSpeed * 0.87));
+                    
+                    // Creates sharp peaks mimicking wide vowels (A, E, O)
+                    let vowelPeaks = Math.pow(Math.sin(speakingSpeed * 1.3), 4) * 0.6;
+                    
+                    // Drops to zero often mimicking closed lips (M, B, P)
+                    let targetMouthOpen = (syllableWave + vowelPeaks) * 0.75; 
+                    
+                    // Lerp for smooth biological movement
+                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, targetMouthOpen, 0.4);
+
+                    // --- NATURAL BODY & HAND GESTURES ---
+                    if (time - lastGestureTime > (Math.random() * 1.5 + 0.8)) {
+                        lastGestureTime = time;
+                        // More human-like fluid target assignments
+                        gestureTargets.lArmZ = Math.random() * 0.2 + 0.05;
+                        gestureTargets.rArmZ = -(Math.random() * 0.2 + 0.05);
+                        gestureTargets.lForeArmX = -(Math.random() * 0.5);
+                        gestureTargets.rForeArmX = -(Math.random() * 0.5);
+                        gestureTargets.spineY = (Math.random() - 0.5) * 0.15;
+                        gestureTargets.neckX = (Math.random() - 0.5) * 0.08;
+                        gestureTargets.headY = (Math.random() - 0.5) * 0.1;
+                    }
+
                     modelGroup.position.y = (Math.sin(time * 3.5) * 0.005) - 0.5; 
 
-                    // Smoothly Lerp bones to human targets driven by Audio boundary events
-                    if(bodyBones.leftArm) bodyBones.leftArm.rotation.z = THREE.MathUtils.lerp(bodyBones.leftArm.rotation.z, initialBoneRotations.get(bodyBones.leftArm.uuid).z + gestureTargets.lArmZ, 0.08);
-                    if(bodyBones.rightArm) bodyBones.rightArm.rotation.z = THREE.MathUtils.lerp(bodyBones.rightArm.rotation.z, initialBoneRotations.get(bodyBones.rightArm.uuid).z + gestureTargets.rArmZ, 0.08);
-                    if(bodyBones.leftForeArm) bodyBones.leftForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.leftForeArm.rotation.x, initialBoneRotations.get(bodyBones.leftForeArm.uuid).x + gestureTargets.lForeArmX, 0.08);
-                    if(bodyBones.rightForeArm) bodyBones.rightForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.rightForeArm.rotation.x, initialBoneRotations.get(bodyBones.rightForeArm.uuid).x + gestureTargets.rForeArmX, 0.08);
+                    // Smoothly Lerp bones to the randomized human targets
+                    if(bodyBones.leftArm) bodyBones.leftArm.rotation.z = THREE.MathUtils.lerp(bodyBones.leftArm.rotation.z, initialBoneRotations.get(bodyBones.leftArm.uuid).z + gestureTargets.lArmZ, 0.06);
+                    if(bodyBones.rightArm) bodyBones.rightArm.rotation.z = THREE.MathUtils.lerp(bodyBones.rightArm.rotation.z, initialBoneRotations.get(bodyBones.rightArm.uuid).z + gestureTargets.rArmZ, 0.06);
+                    if(bodyBones.leftForeArm) bodyBones.leftForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.leftForeArm.rotation.x, initialBoneRotations.get(bodyBones.leftForeArm.uuid).x + gestureTargets.lForeArmX, 0.06);
+                    if(bodyBones.rightForeArm) bodyBones.rightForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.rightForeArm.rotation.x, initialBoneRotations.get(bodyBones.rightForeArm.uuid).x + gestureTargets.rForeArmX, 0.06);
                     
-                    if(bodyBones.spine) bodyBones.spine.rotation.y = THREE.MathUtils.lerp(bodyBones.spine.rotation.y, initialBoneRotations.get(bodyBones.spine.uuid).y + gestureTargets.spineY, 0.05);
-                    if(bodyBones.neck) bodyBones.neck.rotation.x = THREE.MathUtils.lerp(bodyBones.neck.rotation.x, initialBoneRotations.get(bodyBones.neck.uuid).x + gestureTargets.neckX, 0.05);
-                    
-                    if(bodyBones.leftUpLeg) bodyBones.leftUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.leftUpLeg.rotation.z, initialBoneRotations.get(bodyBones.leftUpLeg.uuid).z + breath * 0.015, 0.1);
-                    if(bodyBones.rightUpLeg) bodyBones.rightUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.rightUpLeg.rotation.z, initialBoneRotations.get(bodyBones.rightUpLeg.uuid).z + breath * 0.015, 0.1);
+                    if(bodyBones.spine) bodyBones.spine.rotation.y = THREE.MathUtils.lerp(bodyBones.spine.rotation.y, initialBoneRotations.get(bodyBones.spine.uuid).y + gestureTargets.spineY, 0.04);
+                    if(bodyBones.neck) bodyBones.neck.rotation.x = THREE.MathUtils.lerp(bodyBones.neck.rotation.x, initialBoneRotations.get(bodyBones.neck.uuid).x + gestureTargets.neckX, 0.04);
+                    if(bodyBones.head) bodyBones.head.rotation.y = THREE.MathUtils.lerp(bodyBones.head.rotation.y, initialBoneRotations.get(bodyBones.head.uuid).y + gestureTargets.headY, 0.04);
 
                 } else {
                     // IDLE STATE (Breathing gently, arms resting down)
                     modelGroup.position.y = (Math.sin(time * 1.2) * 0.004) - 0.5; 
                     modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
-                    targetMouthIntensity = 0; // Ensure mouth closes when not speaking
+                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, 0, 0.2);
 
                     if(bodyBones.leftArm) bodyBones.leftArm.rotation.z = THREE.MathUtils.lerp(bodyBones.leftArm.rotation.z, initialBoneRotations.get(bodyBones.leftArm.uuid).z + breath * 0.02, 0.05);
                     if(bodyBones.rightArm) bodyBones.rightArm.rotation.z = THREE.MathUtils.lerp(bodyBones.rightArm.rotation.z, initialBoneRotations.get(bodyBones.rightArm.uuid).z - breath * 0.02, 0.05);
@@ -622,11 +646,13 @@
                     if(bodyBones.rightForeArm) bodyBones.rightForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.rightForeArm.rotation.x, initialBoneRotations.get(bodyBones.rightForeArm.uuid).x, 0.05);
                     if(bodyBones.spine) bodyBones.spine.rotation.y = THREE.MathUtils.lerp(bodyBones.spine.rotation.y, initialBoneRotations.get(bodyBones.spine.uuid).y, 0.05);
                     if(bodyBones.neck) bodyBones.neck.rotation.x = THREE.MathUtils.lerp(bodyBones.neck.rotation.x, initialBoneRotations.get(bodyBones.neck.uuid).x, 0.05);
-                    if(bodyBones.leftUpLeg) bodyBones.leftUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.leftUpLeg.rotation.z, initialBoneRotations.get(bodyBones.leftUpLeg.uuid).z, 0.05);
-                    if(bodyBones.rightUpLeg) bodyBones.rightUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.rightUpLeg.rotation.z, initialBoneRotations.get(bodyBones.rightUpLeg.uuid).z, 0.05);
+                    if(bodyBones.head) bodyBones.head.rotation.y = THREE.MathUtils.lerp(bodyBones.head.rotation.y, initialBoneRotations.get(bodyBones.head.uuid).y, 0.05);
                 }
 
-                // Apply Jaw Rotation or Morph Target Based on Lip Sync
+                if(bodyBones.leftUpLeg) bodyBones.leftUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.leftUpLeg.rotation.z, initialBoneRotations.get(bodyBones.leftUpLeg.uuid).z + breath * 0.015, 0.1);
+                if(bodyBones.rightUpLeg) bodyBones.rightUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.rightUpLeg.rotation.z, initialBoneRotations.get(bodyBones.rightUpLeg.uuid).z + breath * 0.015, 0.1);
+
+                // Apply Jaw Rotation or Morph Target
                 if (jawBone) {
                     jawBone.rotation.x = mouthOpenIntensity; 
                 } else {
@@ -645,7 +671,7 @@
                 if (Math.floor(time) % 5 === 0 && (time % 5) < 0.15) {
                     blinkValue = 1.0;
                 } else if (Math.floor(time) % 8 === 0 && (time % 8) < 0.15) {
-                    blinkValue = 1.0; 
+                    blinkValue = 1.0; // Double blink variance
                 }
                 modelGroup.traverse((child) => {
                     if (child.morphTargetInfluences && child.morphTargetDictionary) {
@@ -657,7 +683,6 @@
                 });
             }
 
-            controls.autoRotate = document.getElementById('btn-rotate').classList.contains('active-state');
             controls.update();
             renderer.render(scene, camera);
         }
@@ -665,15 +690,12 @@
         /* ==========================================
            3. UI CONTROLS & HANDLERS
            ========================================== */
-        const btnRotate = document.getElementById('btn-rotate');
         const btnFullscreen = document.getElementById('btn-fullscreen');
         const btnSound = document.getElementById('btn-sound');
-        const btnCloseLesson = document.getElementById('btn-close-lesson');
         const btnMic = document.getElementById('btn-mic');
+        const btnCloseLesson = document.getElementById('btn-close-lesson');
         
         let soundEnabled = true;
-
-        btnRotate.addEventListener('click', () => btnRotate.classList.toggle('active-state'));
 
         btnSound.addEventListener('click', () => {
             soundEnabled = !soundEnabled;
@@ -681,7 +703,6 @@
             if(!soundEnabled) {
                 window.speechSynthesis.cancel();
                 isSpeaking = false;
-                targetMouthIntensity = 0;
             }
         });
 
@@ -701,7 +722,7 @@
             uiModeBadge.innerText = "TEACHING MODE";
             uiModeBadge.style.background = "rgba(255, 59, 48, 0.1)";
             uiModeBadge.style.color = "var(--danger)";
-            document.getElementById('status-text').innerText = "AI SPEAKING";
+            document.getElementById('status-text').innerText = "SPEAKING";
         }
 
         function setIdleMode() {
@@ -710,14 +731,13 @@
             uiModeBadge.innerText = "IDLE MODE";
             uiModeBadge.style.background = "var(--accent-glow)";
             uiModeBadge.style.color = "var(--accent-color)";
-            document.getElementById('status-text').innerText = "SYSTEM READY";
+            document.getElementById('status-text').innerText = "IDLE";
             window.speechSynthesis.cancel();
             isSpeaking = false;
-            targetMouthIntensity = 0;
         }
 
         /* ==========================================
-           4. CHAT PIPELINES ENGINE (PUSH TO TALK)
+           4. CHAT PIPELINES ENGINE (ON-DEMAND LISTENING)
            ========================================== */
         const chatText = document.getElementById('chat-text');
         const audioWave = document.getElementById('audio-wave');
@@ -726,57 +746,53 @@
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
         let isEngineProcessing = false;
-        let isListening = false;
         
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            // DISABLED CONTINUOUS - NOW ONLY LISTENS WHEN TRIGGERED
-            recognition.continuous = false; 
+            recognition.continuous = false; // Changed to false (Push to talk style)
             recognition.interimResults = false;
 
             recognition.onstart = () => {
-                isListening = true;
-                btnMic.classList.add('listening-active');
-                document.getElementById('status-text').innerText = "USER SPEAKING";
-                chatText.innerText = currentLangCode === 'hi-IN' ? "सुन रहा हूँ... बोलिए।" : "Listening... Please speak.";
+                btnMic.classList.add('active-state');
+                document.getElementById('status-text').innerText = "LISTENING";
+                chatText.innerHTML = currentLangCode === 'hi-IN' ? "सुन रहा हूँ... बोलिए।" : "Listening... Speak now.";
+                audioWave.classList.add('listening');
             };
 
             recognition.onresult = (event) => {
                 if (isSpeaking || isEngineProcessing) return;
-                const last = event.results.length - 1;
-                const transcript = event.results[last][0].transcript.trim();
+                const transcript = event.results[0][0].transcript.trim();
                 
                 if (transcript.length > 2) {
                     handleUserQuery(transcript);
                 }
             };
 
-            recognition.onend = () => {
-                isListening = false;
-                btnMic.classList.remove('listening-active');
-                if (!isEngineProcessing && !isSpeaking) {
-                    document.getElementById('status-text').innerText = "SYSTEM READY";
-                    chatText.innerText = currentLangCode === 'hi-IN' ? "पूछने के लिए माइक बटन दबाएं।" : "Click the mic to speak.";
-                }
-            };
-
             recognition.onerror = (e) => {
-                isListening = false;
-                btnMic.classList.remove('listening-active');
+                resetMicState();
             };
 
-            // Mic Button Logic
-            btnMic.addEventListener('click', () => {
-                if(isListening) {
-                    recognition.stop();
-                } else if (!isSpeaking && !isEngineProcessing) {
-                    recognition.start();
-                }
-            });
-
+            recognition.onend = () => {
+                resetMicState();
+            };
         } else {
             chatText.innerHTML = "Your browser doesn't support Voice AI. Please use Chrome.";
         }
+
+        function resetMicState() {
+            btnMic.classList.remove('active-state');
+            audioWave.classList.remove('listening');
+            if (!isEngineProcessing && !isSpeaking) {
+                document.getElementById('status-text').innerText = "IDLE";
+            }
+        }
+
+        // Trigger Mic manually
+        btnMic.addEventListener('click', () => {
+            if (recognition && !isSpeaking && !isEngineProcessing) {
+                try { recognition.start(); } catch(e) {}
+            }
+        });
 
         async function handleUserQuery(query) {
             isEngineProcessing = true;
@@ -841,7 +857,7 @@
                 return;
             }
             window.speechSynthesis.cancel();
-            targetMouthIntensity = 0; 
+            try { recognition.stop(); } catch(e){}
 
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1.0;
@@ -854,48 +870,22 @@
 
             utterance.onstart = () => {
                 isSpeaking = true;
-                audioWave.classList.add('visible');
-            };
-
-            // REAL-TIME AUDIO SYNCHRONIZATION EVENT
-            utterance.onboundary = (event) => {
-                if (event.name === 'word') {
-                    const word = text.slice(event.charIndex, event.charIndex + event.charLength);
-                    
-                    // The more vowels a word has, the wider the mouth needs to open
-                    const vowelMatch = word.match(/[aeiouAEIOUà-ःअ-औ]/g);
-                    const intensity = vowelMatch ? (0.2 + (vowelMatch.length * 0.15)) : 0.15;
-                    targetMouthIntensity = Math.min(0.6, intensity); // Cap maximum openness
-                    
-                    // Close mouth momentarily at the end of the word for realistic articulation
-                    setTimeout(() => {
-                        targetMouthIntensity = 0.02;
-                    }, Math.max(50, event.charLength * 30));
-
-                    // Body language synced to speech emphasis
-                    if (word.length > 4 && Math.random() > 0.4) {
-                        gestureTargets.neckX = (Math.random() - 0.5) * 0.1;
-                        gestureTargets.lForeArmX = -(Math.random() * 0.4);
-                        gestureTargets.rForeArmX = -(Math.random() * 0.4);
-                        gestureTargets.spineY = (Math.random() - 0.5) * 0.1;
-                    }
-                }
+                audioWave.classList.remove('listening');
+                audioWave.classList.add('speaking');
             };
             
             utterance.onend = () => {
                 isSpeaking = false;
                 isEngineProcessing = false;
-                targetMouthIntensity = 0;
-                audioWave.classList.remove('visible');
-                document.getElementById('status-text').innerText = "SYSTEM READY";
-                chatText.innerText = currentLangCode === 'hi-IN' ? "पूछने के लिए माइक बटन दबाएं।" : "Click the mic to speak.";
+                audioWave.classList.remove('speaking');
+                document.getElementById('status-text').innerText = "IDLE";
+                chatText.innerHTML = currentLangCode === 'hi-IN' ? "बोलने के लिए माइक बटन पर क्लिक करें..." : "Click the mic button to speak...";
             };
 
             utterance.onerror = () => {
                 isSpeaking = false;
                 isEngineProcessing = false;
-                targetMouthIntensity = 0;
-                audioWave.classList.remove('visible');
+                audioWave.classList.remove('speaking');
             };
 
             window.speechSynthesis.speak(utterance);
