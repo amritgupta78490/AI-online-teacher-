@@ -7,9 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* ==========================================
-           GLOBAL & VARIABLES
-           ========================================== */
         :root {
             --bg-color: #FFFFFF;
             --surface-color: rgba(255, 255, 255, 0.85);
@@ -51,9 +48,6 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
         }
 
-        /* ==========================================
-           LANGUAGE SELECTION OVERLAY
-           ========================================== */
         #lang-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -97,9 +91,6 @@
             box-shadow: 0 12px 25px rgba(0, 102, 204, 0.3);
         }
 
-        /* ==========================================
-           LAYOUT MAIN
-           ========================================== */
         .app-layout {
             display: flex;
             flex-direction: column;
@@ -154,9 +145,6 @@
             border-radius: 12px;
         }
 
-        /* ==========================================
-           VIDEO SECTION
-           ========================================== */
         .video-section {
             width: 100%; 
             height: 55vh; 
@@ -238,9 +226,6 @@
         .lesson-body { flex-grow: 1; padding: 12px; overflow-y: auto; }
         .teaching-card { font-size: 13.5px; line-height: 1.5; color: var(--text-main); }
 
-        /* ==========================================
-           INTERACTION & CONTROLS AREA
-           ========================================== */
         .interaction-area {
             display: flex; flex-direction: column; gap: 12px;
             max-width: 900px; width: 100%; margin: 0 auto;
@@ -275,7 +260,6 @@
         .icon-btn:hover { transform: translateY(-2px); }
         .icon-btn svg { width: 18px; height: 18px; fill: currentColor; }
         
-        /* Removed background change on click for active-state to make it look like a trigger */
         .icon-btn.active-state { background: var(--accent-color); color: white; }
         .icon-btn.active-state svg { fill: white; }
 
@@ -290,7 +274,6 @@
             text-transform: uppercase; margin-bottom: 2px; display: flex; align-items: center; gap: 6px;
         }
 
-        /* Waveform Animation */
         .waveform { display: flex; align-items: center; gap: 2px; height: 10px; opacity: 0; transition: opacity 0.3s; }
         .bar {
             width: 2px; background-color: var(--danger); border-radius: 2px;
@@ -410,15 +393,11 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        /* ==========================================
-           IMPORTANT: API KEY SYSTEM CONFIGURATION
-           ========================================== */
         const GEMINI_API_KEY = "AIzaSyDC3vs-oTy2ff_eJXS_MRd_4oN3AMdnxBs";
         
         let currentLangCode = 'en-US';
         let geminiPromptLang = 'English';
 
-        // Make startGame global so HTML buttons can access it
         window.startGame = function(langCode) {
             document.getElementById('lang-overlay').style.opacity = '0';
             setTimeout(() => {
@@ -437,21 +416,22 @@
             document.getElementById('chat-text').innerText = langCode === 'hi-IN' ? "बोलने के लिए माइक बटन पर क्लिक करें..." : "Click the mic button to speak...";
             document.getElementById('ai-search-input').placeholder = langCode === 'hi-IN' ? "अपना सवाल यहाँ टाइप करें..." : "Type your question here...";
 
-            // Initial Greeting
             speakText(greetingText);
         }
 
         /* ==========================================
-           1. THREE.JS ENVIRONMENT SETUP
-           ========================================== */
+           THREE.JS SCENE SETUP
+        ========================================== */
         let scene, camera, renderer, controls, clock, modelGroup;
         
-        // Bone Animation Variables
-        let jawBone = null; 
+        let jawBone = null;
         let bodyBones = {
-            spine: null, neck: null, head: null,
+            spine: null, spine1: null, spine2: null,
+            neck: null, head: null,
+            leftShoulder: null, rightShoulder: null,
             leftArm: null, rightArm: null,
             leftForeArm: null, rightForeArm: null,
+            leftHand: null, rightHand: null,
             leftUpLeg: null, rightUpLeg: null
         };
         const initialBoneRotations = new Map();
@@ -463,23 +443,78 @@
 
         let isTeachingMode = false;
         let isSpeaking = false;
-        let mouthOpenIntensity = 0;
-        
-        // Dynamic Gesture Targets for natural human movement
-        let gestureTargets = {
-            lArmZ: 0, rArmZ: 0, lForeArmX: 0, rForeArmX: 0, spineY: 0, neckX: 0, headY: 0
+
+        // ==========================================
+        // ADVANCED LIPSYNC ENGINE
+        // ==========================================
+        // We track multiple independent oscillators to simulate real speech
+        // Real speech = fast consonant bursts + wide vowel peaks + micro pauses
+        let lipSync = {
+            raw: 0,           // raw computed target
+            smoothed: 0,      // smoothed output applied to jaw
+            // Phase accumulators for each oscillator layer
+            phase1: 0,        // syllable layer (~5-8 syllables/sec)
+            phase2: 0,        // vowel peak layer (~2-3 Hz)
+            phase3: 0,        // micro stutter layer (rapid small)
+            pauseTimer: 0,    // counts down to next micro-pause
+            pauseDuration: 0, // how long current pause lasts
+            inPause: false,
         };
-        let lastGestureTime = 0;
-        
-        const absoluteCenterTarget = new THREE.Vector3(0, 1.1, 0);
+
+        // ==========================================
+        // ADVANCED BODY GESTURE ENGINE
+        // ==========================================
+        // Teacher gestures: head nods, hand raises, lean forward/back
+        // We have multiple gesture "states" that blend organically
+        let gesture = {
+            // Current smoothed bone offsets
+            lArmZ: 0, rArmZ: 0,
+            lForeArmX: 0, rForeArmX: 0,
+            lForeArmZ: 0, rForeArmZ: 0,
+            lHandX: 0, rHandX: 0,
+            spineX: 0, spineY: 0, spineZ: 0,
+            spine1X: 0,
+            neckX: 0, neckY: 0,
+            headX: 0, headY: 0, headZ: 0,
+            // Targets (randomized periodically)
+            tLArmZ: 0, tRArmZ: 0,
+            tLForeArmX: 0, tRForeArmX: 0,
+            tLForeArmZ: 0, tRForeArmZ: 0,
+            tLHandX: 0, tRHandX: 0,
+            tSpineX: 0, tSpineY: 0, tSpineZ: 0,
+            tSpine1X: 0,
+            tNeckX: 0, tNeckY: 0,
+            tHeadX: 0, tHeadY: 0, tHeadZ: 0,
+            // Gesture phase counter
+            nextGestureTime: 0,
+            gesturePhase: 0,        // 0=rest, 1=point-left, 2=point-right, 3=open-both, 4=lean-explain, 5=nod
+            gestureStep: 0,
+        };
+
+        // Blinking system
+        let blink = {
+            state: 0,           // 0 = open, 1 = closing, 2 = opening
+            value: 0,           // 0 = fully open, 1 = fully closed
+            nextBlinkTime: 3,   // time until next blink
+            blinkSpeed: 8,      // speed of blink
+        };
+
+        // Breathing system (gentle idle sway)
+        let breath = {
+            phase: 0,
+            chestPhase: 0,
+        };
+
         const uiModeBadge = document.getElementById('ui-mode-badge');
+
+        const absoluteCenterTarget = new THREE.Vector3(0, 1.1, 0);
 
         init3D();
         animate3D();
 
         function init3D() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xffffff); 
+            scene.background = new THREE.Color(0xffffff);
             clock = new THREE.Clock();
 
             const aspect = container.clientWidth / container.clientHeight;
@@ -499,13 +534,17 @@
             keyLight.position.set(1, 3, 3);
             scene.add(keyLight);
 
+            // Soft fill light from left
+            const fillLight = new THREE.DirectionalLight(0xfff5e0, 0.6);
+            fillLight.position.set(-2, 1, 1);
+            scene.add(fillLight);
+
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
             controls.minDistance = 1.0;
-            controls.maxDistance = 25; 
+            controls.maxDistance = 25;
             controls.enablePan = false;
-            // Auto Rotate Removed
             controls.autoRotate = false;
             controls.target.copy(absoluteCenterTarget);
 
@@ -526,9 +565,9 @@
 
                 model.traverse((child) => {
                     if (child.isMesh) {
-                        child.castShadow = false; 
+                        child.castShadow = false;
                         child.receiveShadow = false;
-                        if(child.material) {
+                        if (child.material) {
                             child.material.roughness = 0.5;
                             child.material.metalness = 0.0;
                         }
@@ -537,16 +576,32 @@
                         initialBoneRotations.set(child.uuid, child.rotation.clone());
                         
                         const name = child.name.toLowerCase();
-                        if (name.includes('jaw') || name.includes('mouth')) jawBone = child;
-                        else if (name.includes('spine') || name.includes('chest')) bodyBones.spine = child;
-                        else if (name.includes('neck')) bodyBones.neck = child;
-                        else if (name.includes('head')) bodyBones.head = child;
-                        else if (name.includes('leftarm') || name.includes('left_arm')) bodyBones.leftArm = child;
-                        else if (name.includes('rightarm') || name.includes('right_arm')) bodyBones.rightArm = child;
-                        else if (name.includes('leftforearm') || name.includes('left_forearm')) bodyBones.leftForeArm = child;
-                        else if (name.includes('rightforearm') || name.includes('right_forearm')) bodyBones.rightForeArm = child;
-                        else if (name.includes('leftupleg') || name.includes('left_leg') || name.includes('leftthigh')) bodyBones.leftUpLeg = child;
-                        else if (name.includes('rightupleg') || name.includes('right_leg') || name.includes('rightthigh')) bodyBones.rightUpLeg = child;
+
+                        // Jaw / mouth
+                        if (name.includes('jaw') || name.includes('lowerjaw') || name.includes('mouth')) jawBone = child;
+
+                        // Spine chain
+                        if ((name.includes('spine') && !name.includes('spine1') && !name.includes('spine2')) || name.includes('chest')) bodyBones.spine = child;
+                        if (name.includes('spine1') || name.includes('spine_1')) bodyBones.spine1 = child;
+                        if (name.includes('spine2') || name.includes('upperchest')) bodyBones.spine2 = child;
+
+                        // Head / neck
+                        if (name.includes('neck')) bodyBones.neck = child;
+                        if (name.includes('head') && !name.includes('headtop') && !name.includes('head_end')) bodyBones.head = child;
+
+                        // Arms
+                        if (name.includes('leftshoulder') || name.includes('left_shoulder') || name.includes('lshoulder')) bodyBones.leftShoulder = child;
+                        if (name.includes('rightshoulder') || name.includes('right_shoulder') || name.includes('rshoulder')) bodyBones.rightShoulder = child;
+                        if ((name.includes('leftarm') || name.includes('left_arm') || name.includes('larm') || name.includes('upperarm_l')) && !name.includes('forearm')) bodyBones.leftArm = child;
+                        if ((name.includes('rightarm') || name.includes('right_arm') || name.includes('rarm') || name.includes('upperarm_r')) && !name.includes('forearm')) bodyBones.rightArm = child;
+                        if (name.includes('leftforearm') || name.includes('left_forearm') || name.includes('lforearm') || name.includes('forearm_l')) bodyBones.leftForeArm = child;
+                        if (name.includes('rightforearm') || name.includes('right_forearm') || name.includes('rforearm') || name.includes('forearm_r')) bodyBones.rightForeArm = child;
+                        if (name.includes('lefthand') || name.includes('left_hand') || name.includes('lhand') || name.includes('hand_l')) bodyBones.leftHand = child;
+                        if (name.includes('righthand') || name.includes('right_hand') || name.includes('rhand') || name.includes('hand_r')) bodyBones.rightHand = child;
+
+                        // Legs
+                        if (name.includes('leftupleg') || name.includes('left_leg') || name.includes('leftthigh') || name.includes('upleg_l')) bodyBones.leftUpLeg = child;
+                        if (name.includes('rightupleg') || name.includes('right_leg') || name.includes('rightthigh') || name.includes('upleg_r')) bodyBones.rightUpLeg = child;
                     }
                 });
 
@@ -559,8 +614,8 @@
                 const scaledBox = new THREE.Box3().setFromObject(model);
                 const center = scaledBox.getCenter(new THREE.Vector3());
                 
-                model.position.x = -center.x; 
-                model.position.y = -center.y - 0.5; 
+                model.position.x = -center.x;
+                model.position.y = -center.y - 0.5;
                 model.position.z = -center.z;
 
                 modelGroup.add(model);
@@ -573,7 +628,7 @@
                     const percent = Math.round((xhr.loaded / xhr.total) * 100);
                     loadingStatus.innerText = `Loading Mr. Amrit Engine (${percent}%)...`;
                 } else {
-                    loadingStatus.innerText = `Streaming Virtual Headsets...`;
+                    loadingStatus.innerText = `Streaming Virtual Classroom...`;
                 }
             },
             function (error) {
@@ -596,109 +651,389 @@
 
         function updateCameraPosition() {
             if (container.clientWidth < 768) {
-                camera.position.set(0, 1.2, 12.65); 
+                camera.position.set(0, 1.2, 12.65);
             } else {
-                camera.position.set(0, 1.2, 10.95); 
+                camera.position.set(0, 1.2, 10.95);
             }
+        }
+
+        /* ==========================================
+           LIPSYNC: Advanced multi-layer simulation
+           Layer 1: Syllable rhythm (fast ~6Hz) - base opening/closing
+           Layer 2: Vowel peaks (2-3Hz) - wide opens for A/E/O
+           Layer 3: Micro-stutters (very fast) - stop consonants
+           Layer 4: Natural micro-pauses (random gaps between words)
+        ========================================== */
+        function updateLipSync(dt) {
+            if (!isSpeaking) {
+                // Smoothly close mouth
+                lipSync.smoothed = THREE.MathUtils.lerp(lipSync.smoothed, 0, dt * 12);
+                return;
+            }
+
+            // Update pause system
+            if (lipSync.inPause) {
+                lipSync.pauseTimer -= dt;
+                if (lipSync.pauseTimer <= 0) {
+                    lipSync.inPause = false;
+                    // Schedule next pause (every 1.5 to 3.5 seconds)
+                    lipSync.pauseTimer = 1.5 + Math.random() * 2.0;
+                }
+                // During pause: mouth slowly closes
+                lipSync.raw = THREE.MathUtils.lerp(lipSync.raw, 0, dt * 8);
+            } else {
+                lipSync.pauseTimer -= dt;
+                if (lipSync.pauseTimer <= 0) {
+                    lipSync.inPause = true;
+                    lipSync.pauseDuration = 0.08 + Math.random() * 0.15;
+                    lipSync.pauseTimer = lipSync.pauseDuration;
+                }
+
+                // Layer 1: Syllable rhythm - the main open/close cycle
+                // Real speech: ~4-7 syllables per second
+                lipSync.phase1 += dt * (5.5 + Math.sin(lipSync.phase2 * 0.3) * 1.5);
+                // Rectified sine = only opens, never goes negative
+                const syllable = Math.max(0, Math.sin(lipSync.phase1 * Math.PI));
+                // Sharp attack, slow release = realistic jaw movement
+                const syllableSharp = Math.pow(syllable, 0.5) * Math.pow(syllable, 2) * 2;
+                const syllableVal = Math.min(1, syllableSharp * 0.55);
+
+                // Layer 2: Vowel peaks - wide slow opens
+                lipSync.phase2 += dt * 2.3;
+                const vowelRaw = Math.sin(lipSync.phase2) * 0.5 + 0.5;
+                const vowelPeak = Math.pow(vowelRaw, 3) * 0.5; // Only fire on peaks
+
+                // Layer 3: Micro-variation for natural imperfection
+                lipSync.phase3 += dt * 18;
+                const micro = (Math.sin(lipSync.phase3) * 0.5 + 0.5) * 0.07;
+
+                // Combine all layers
+                lipSync.raw = syllableVal + vowelPeak + micro;
+                lipSync.raw = Math.min(1.0, lipSync.raw);
+            }
+
+            // Smooth the raw signal for organic jaw movement
+            // Fast towards open (jaw drops fast), slow towards close (jaw rises slowly)
+            const speed = lipSync.raw > lipSync.smoothed ? 22 : 14;
+            lipSync.smoothed = THREE.MathUtils.lerp(lipSync.smoothed, lipSync.raw, dt * speed);
+        }
+
+        /* ==========================================
+           GESTURE ENGINE: Natural teacher body movement
+           Teachers do these things while explaining:
+           - Lean slightly forward when making a point
+           - Raise one or both hands for emphasis
+           - Nod head for confirmation
+           - Turn slightly left/right
+           - Bend forearm upward when listing things
+           - Open palms when explaining broadly
+        ========================================== */
+        function pickNewGesture(time) {
+            gesture.gesturePhase = Math.floor(Math.random() * 7);
+            gesture.nextGestureTime = time + 0.8 + Math.random() * 1.8; // 0.8 to 2.6 seconds between gestures
+
+            switch (gesture.gesturePhase) {
+                case 0: // REST - arms naturally down, slight sway
+                    gesture.tLArmZ = 0.05 + Math.random() * 0.05;
+                    gesture.tRArmZ = -(0.05 + Math.random() * 0.05);
+                    gesture.tLForeArmX = -0.1 - Math.random() * 0.15;
+                    gesture.tRForeArmX = -0.1 - Math.random() * 0.15;
+                    gesture.tLForeArmZ = 0;
+                    gesture.tRForeArmZ = 0;
+                    gesture.tSpineX = 0;
+                    gesture.tSpineY = (Math.random() - 0.5) * 0.05;
+                    gesture.tSpine1X = 0;
+                    gesture.tNeckX = (Math.random() - 0.5) * 0.04;
+                    gesture.tHeadY = (Math.random() - 0.5) * 0.06;
+                    gesture.tHeadX = 0;
+                    break;
+
+                case 1: // POINT LEFT - raise right arm, forearm up, pointing gesture
+                    gesture.tLArmZ = 0.05;
+                    gesture.tRArmZ = -0.35 - Math.random() * 0.1;
+                    gesture.tRForeArmX = -0.7 - Math.random() * 0.2;
+                    gesture.tRForeArmZ = -0.2;
+                    gesture.tLForeArmX = -0.1;
+                    gesture.tLForeArmZ = 0;
+                    gesture.tSpineY = -0.08;
+                    gesture.tSpine1X = 0.05;
+                    gesture.tNeckX = 0.03;
+                    gesture.tHeadY = -0.06;
+                    gesture.tHeadX = 0.02;
+                    break;
+
+                case 2: // POINT RIGHT - raise left arm
+                    gesture.tRArmZ = -0.05;
+                    gesture.tLArmZ = 0.35 + Math.random() * 0.1;
+                    gesture.tLForeArmX = -0.7 - Math.random() * 0.2;
+                    gesture.tLForeArmZ = 0.2;
+                    gesture.tRForeArmX = -0.1;
+                    gesture.tRForeArmZ = 0;
+                    gesture.tSpineY = 0.08;
+                    gesture.tSpine1X = 0.05;
+                    gesture.tNeckX = 0.03;
+                    gesture.tHeadY = 0.06;
+                    gesture.tHeadX = 0.02;
+                    break;
+
+                case 3: // OPEN BOTH HANDS - explaining broadly, both forearms up symmetrically
+                    gesture.tLArmZ = 0.22 + Math.random() * 0.08;
+                    gesture.tRArmZ = -(0.22 + Math.random() * 0.08);
+                    gesture.tLForeArmX = -0.6 - Math.random() * 0.2;
+                    gesture.tRForeArmX = -0.6 - Math.random() * 0.2;
+                    gesture.tLForeArmZ = 0.1;
+                    gesture.tRForeArmZ = -0.1;
+                    gesture.tLHandX = 0.2;
+                    gesture.tRHandX = 0.2;
+                    gesture.tSpineX = 0.04;
+                    gesture.tSpineY = 0;
+                    gesture.tNeckX = 0.02;
+                    gesture.tHeadX = 0.03;
+                    gesture.tHeadY = 0;
+                    break;
+
+                case 4: // LEAN FORWARD - emphasis, leaning in while explaining a key point
+                    gesture.tSpine1X = 0.12;
+                    gesture.tSpineX = 0.06;
+                    gesture.tNeckX = -0.04;
+                    gesture.tHeadX = -0.02;
+                    gesture.tLArmZ = 0.15;
+                    gesture.tRArmZ = -0.15;
+                    gesture.tLForeArmX = -0.5;
+                    gesture.tRForeArmX = -0.5;
+                    gesture.tSpineY = (Math.random() - 0.5) * 0.04;
+                    gesture.tHeadY = (Math.random() - 0.5) * 0.04;
+                    break;
+
+                case 5: // NOD - head nods up-down, agreeing/confirming while speaking
+                    gesture.tHeadX = 0.08 + Math.random() * 0.06;
+                    gesture.tNeckX = 0.04;
+                    gesture.tLArmZ = 0.08;
+                    gesture.tRArmZ = -0.08;
+                    gesture.tLForeArmX = -0.2;
+                    gesture.tRForeArmX = -0.2;
+                    gesture.tSpineY = (Math.random() - 0.5) * 0.03;
+                    gesture.tHeadY = (Math.random() - 0.5) * 0.04;
+                    gesture.tSpine1X = 0.02;
+                    break;
+
+                case 6: // ONE HAND RAISED - single forearm up, like listing a point
+                    if (Math.random() > 0.5) {
+                        gesture.tRForeArmX = -0.9 - Math.random() * 0.2;
+                        gesture.tRArmZ = -0.18;
+                        gesture.tLForeArmX = -0.1;
+                        gesture.tLArmZ = 0.05;
+                    } else {
+                        gesture.tLForeArmX = -0.9 - Math.random() * 0.2;
+                        gesture.tLArmZ = 0.18;
+                        gesture.tRForeArmX = -0.1;
+                        gesture.tRArmZ = -0.05;
+                    }
+                    gesture.tSpineY = (Math.random() - 0.5) * 0.06;
+                    gesture.tSpine1X = 0.03;
+                    gesture.tNeckX = 0.02;
+                    gesture.tHeadX = 0.02;
+                    gesture.tHeadY = (Math.random() - 0.5) * 0.05;
+                    break;
+            }
+        }
+
+        function smoothLerp(current, target, speed, dt) {
+            return THREE.MathUtils.lerp(current, target, 1 - Math.exp(-speed * dt));
+        }
+
+        function updateGestures(dt, time) {
+            const lerpSpeed = isSpeaking ? 3.5 : 2.0;
+
+            if (isSpeaking) {
+                if (time >= gesture.nextGestureTime) {
+                    pickNewGesture(time);
+                }
+            } else {
+                // Idle: slowly return to natural rest
+                gesture.tLArmZ = 0.04;
+                gesture.tRArmZ = -0.04;
+                gesture.tLForeArmX = 0;
+                gesture.tRForeArmX = 0;
+                gesture.tLForeArmZ = 0;
+                gesture.tRForeArmZ = 0;
+                gesture.tLHandX = 0;
+                gesture.tRHandX = 0;
+                gesture.tSpineX = 0;
+                gesture.tSpineY = 0;
+                gesture.tSpine1X = 0;
+                gesture.tNeckX = 0;
+                gesture.tNeckY = 0;
+                gesture.tHeadX = 0;
+                gesture.tHeadY = 0;
+                gesture.tHeadZ = 0;
+            }
+
+            // Smooth all gesture values
+            gesture.lArmZ = smoothLerp(gesture.lArmZ, gesture.tLArmZ, lerpSpeed, dt);
+            gesture.rArmZ = smoothLerp(gesture.rArmZ, gesture.tRArmZ, lerpSpeed, dt);
+            gesture.lForeArmX = smoothLerp(gesture.lForeArmX, gesture.tLForeArmX, lerpSpeed * 1.2, dt);
+            gesture.rForeArmX = smoothLerp(gesture.rForeArmX, gesture.tRForeArmX, lerpSpeed * 1.2, dt);
+            gesture.lForeArmZ = smoothLerp(gesture.lForeArmZ, gesture.tLForeArmZ, lerpSpeed, dt);
+            gesture.rForeArmZ = smoothLerp(gesture.rForeArmZ, gesture.tRForeArmZ, lerpSpeed, dt);
+            gesture.lHandX = smoothLerp(gesture.lHandX, gesture.tLHandX, lerpSpeed, dt);
+            gesture.rHandX = smoothLerp(gesture.rHandX, gesture.tRHandX, lerpSpeed, dt);
+            gesture.spineX = smoothLerp(gesture.spineX, gesture.tSpineX, lerpSpeed * 0.7, dt);
+            gesture.spineY = smoothLerp(gesture.spineY, gesture.tSpineY, lerpSpeed * 0.7, dt);
+            gesture.spine1X = smoothLerp(gesture.spine1X, gesture.tSpine1X, lerpSpeed * 0.7, dt);
+            gesture.neckX = smoothLerp(gesture.neckX, gesture.tNeckX, lerpSpeed, dt);
+            gesture.neckY = smoothLerp(gesture.neckY, gesture.tNeckY, lerpSpeed, dt);
+            gesture.headX = smoothLerp(gesture.headX, gesture.tHeadX, lerpSpeed * 1.3, dt);
+            gesture.headY = smoothLerp(gesture.headY, gesture.tHeadY, lerpSpeed * 1.3, dt);
+        }
+
+        function updateBlinking(dt, time) {
+            blink.nextBlinkTime -= dt;
+            if (blink.nextBlinkTime <= 0 && blink.state === 0) {
+                blink.state = 1; // start closing
+                // Next blink in 2-6 seconds, with occasional double-blink
+                blink.nextBlinkTime = 2.0 + Math.random() * 4.0;
+                if (Math.random() < 0.15) blink.nextBlinkTime = 0.15; // double blink soon
+            }
+
+            if (blink.state === 1) {
+                blink.value += dt * blink.blinkSpeed;
+                if (blink.value >= 1) {
+                    blink.value = 1;
+                    blink.state = 2; // now opening
+                }
+            } else if (blink.state === 2) {
+                blink.value -= dt * blink.blinkSpeed * 0.7; // open slightly slower
+                if (blink.value <= 0) {
+                    blink.value = 0;
+                    blink.state = 0; // fully open
+                }
+            }
+        }
+
+        function applyBonePose(bone, key, rotX, rotY, rotZ) {
+            if (!bone) return;
+            const init = initialBoneRotations.get(bone.uuid);
+            if (!init) return;
+            if (rotX !== undefined) bone.rotation.x = init.x + rotX;
+            if (rotY !== undefined) bone.rotation.y = init.y + rotY;
+            if (rotZ !== undefined) bone.rotation.z = init.z + rotZ;
         }
 
         function animate3D() {
             requestAnimationFrame(animate3D);
+            const dt = Math.min(clock.getDelta(), 0.05); // cap dt to prevent jumps
             const time = clock.getElapsedTime();
 
             controls.target.lerp(absoluteCenterTarget, 0.1);
 
             if (modelGroup && modelGroup.children.length > 0) {
+
+                // ---- BREATHING ----
+                breath.phase += dt * 0.28; // ~17 breaths/min = natural adult
+                breath.chestPhase += dt * 0.28;
+                const breathSin = Math.sin(breath.phase * Math.PI * 2);
+                // Breathing bob - very subtle
+                const breathBob = breathSin * 0.003;
                 
-                const breath = Math.sin(time * 1.5);
+                // ---- LIPSYNC UPDATE ----
+                updateLipSync(dt);
 
-                if (isSpeaking) {
-                    // --- ADVANCED PROCEDURAL LIP SYNC ---
-                    // Creates a much more realistic simulation of human speech (vowels open wide, consonants close)
-                    let speakingSpeed = time * 18;
-                    
-                    // Creates rapid variations mimicking speech syllables
-                    let syllableWave = Math.max(0, Math.sin(speakingSpeed) * Math.cos(speakingSpeed * 0.43) * Math.sin(speakingSpeed * 0.87));
-                    
-                    // Creates sharp peaks mimicking wide vowels (A, E, O)
-                    let vowelPeaks = Math.pow(Math.sin(speakingSpeed * 1.3), 4) * 0.6;
-                    
-                    // Drops to zero often mimicking closed lips (M, B, P)
-                    let targetMouthOpen = (syllableWave + vowelPeaks) * 0.75; 
-                    
-                    // Lerp for smooth biological movement
-                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, targetMouthOpen, 0.4);
+                // ---- GESTURE UPDATE ----
+                updateGestures(dt, time);
 
-                    // --- NATURAL BODY & HAND GESTURES ---
-                    if (time - lastGestureTime > (Math.random() * 1.5 + 0.8)) {
-                        lastGestureTime = time;
-                        // More human-like fluid target assignments
-                        gestureTargets.lArmZ = Math.random() * 0.2 + 0.05;
-                        gestureTargets.rArmZ = -(Math.random() * 0.2 + 0.05);
-                        gestureTargets.lForeArmX = -(Math.random() * 0.5);
-                        gestureTargets.rForeArmX = -(Math.random() * 0.5);
-                        gestureTargets.spineY = (Math.random() - 0.5) * 0.15;
-                        gestureTargets.neckX = (Math.random() - 0.5) * 0.08;
-                        gestureTargets.headY = (Math.random() - 0.5) * 0.1;
-                    }
+                // ---- BLINK UPDATE ----
+                updateBlinking(dt, time);
 
-                    modelGroup.position.y = (Math.sin(time * 3.5) * 0.005) - 0.5; 
+                // ==========================
+                // APPLY BREATHING TO BODY
+                // ==========================
+                // Very subtle overall body bob
+                modelGroup.position.y = -0.5 + breathBob + (isSpeaking ? Math.sin(time * 3.5) * 0.003 : 0);
 
-                    // Smoothly Lerp bones to the randomized human targets
-                    if(bodyBones.leftArm) bodyBones.leftArm.rotation.z = THREE.MathUtils.lerp(bodyBones.leftArm.rotation.z, initialBoneRotations.get(bodyBones.leftArm.uuid).z + gestureTargets.lArmZ, 0.06);
-                    if(bodyBones.rightArm) bodyBones.rightArm.rotation.z = THREE.MathUtils.lerp(bodyBones.rightArm.rotation.z, initialBoneRotations.get(bodyBones.rightArm.uuid).z + gestureTargets.rArmZ, 0.06);
-                    if(bodyBones.leftForeArm) bodyBones.leftForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.leftForeArm.rotation.x, initialBoneRotations.get(bodyBones.leftForeArm.uuid).x + gestureTargets.lForeArmX, 0.06);
-                    if(bodyBones.rightForeArm) bodyBones.rightForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.rightForeArm.rotation.x, initialBoneRotations.get(bodyBones.rightForeArm.uuid).x + gestureTargets.rForeArmX, 0.06);
-                    
-                    if(bodyBones.spine) bodyBones.spine.rotation.y = THREE.MathUtils.lerp(bodyBones.spine.rotation.y, initialBoneRotations.get(bodyBones.spine.uuid).y + gestureTargets.spineY, 0.04);
-                    if(bodyBones.neck) bodyBones.neck.rotation.x = THREE.MathUtils.lerp(bodyBones.neck.rotation.x, initialBoneRotations.get(bodyBones.neck.uuid).x + gestureTargets.neckX, 0.04);
-                    if(bodyBones.head) bodyBones.head.rotation.y = THREE.MathUtils.lerp(bodyBones.head.rotation.y, initialBoneRotations.get(bodyBones.head.uuid).y + gestureTargets.headY, 0.04);
+                // ==========================
+                // APPLY SPINE / TORSO
+                // ==========================
+                applyBonePose(bodyBones.spine, 'spine',
+                    gesture.spineX + breathSin * 0.008,
+                    gesture.spineY,
+                    0
+                );
+                applyBonePose(bodyBones.spine1, 'spine1',
+                    gesture.spine1X + breathSin * 0.006,
+                    0,
+                    0
+                );
 
-                } else {
-                    // IDLE STATE (Breathing gently, arms resting down)
-                    modelGroup.position.y = (Math.sin(time * 1.2) * 0.004) - 0.5; 
-                    modelGroup.rotation.y = THREE.MathUtils.lerp(modelGroup.rotation.y, 0, 0.05);
-                    mouthOpenIntensity = THREE.MathUtils.lerp(mouthOpenIntensity, 0, 0.2);
+                // ==========================
+                // APPLY HEAD / NECK
+                // ==========================
+                applyBonePose(bodyBones.neck, 'neck',
+                    gesture.neckX,
+                    gesture.neckY,
+                    0
+                );
+                applyBonePose(bodyBones.head, 'head',
+                    gesture.headX,
+                    gesture.headY,
+                    0
+                );
 
-                    if(bodyBones.leftArm) bodyBones.leftArm.rotation.z = THREE.MathUtils.lerp(bodyBones.leftArm.rotation.z, initialBoneRotations.get(bodyBones.leftArm.uuid).z + breath * 0.02, 0.05);
-                    if(bodyBones.rightArm) bodyBones.rightArm.rotation.z = THREE.MathUtils.lerp(bodyBones.rightArm.rotation.z, initialBoneRotations.get(bodyBones.rightArm.uuid).z - breath * 0.02, 0.05);
-                    if(bodyBones.leftForeArm) bodyBones.leftForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.leftForeArm.rotation.x, initialBoneRotations.get(bodyBones.leftForeArm.uuid).x, 0.05);
-                    if(bodyBones.rightForeArm) bodyBones.rightForeArm.rotation.x = THREE.MathUtils.lerp(bodyBones.rightForeArm.rotation.x, initialBoneRotations.get(bodyBones.rightForeArm.uuid).x, 0.05);
-                    if(bodyBones.spine) bodyBones.spine.rotation.y = THREE.MathUtils.lerp(bodyBones.spine.rotation.y, initialBoneRotations.get(bodyBones.spine.uuid).y, 0.05);
-                    if(bodyBones.neck) bodyBones.neck.rotation.x = THREE.MathUtils.lerp(bodyBones.neck.rotation.x, initialBoneRotations.get(bodyBones.neck.uuid).x, 0.05);
-                    if(bodyBones.head) bodyBones.head.rotation.y = THREE.MathUtils.lerp(bodyBones.head.rotation.y, initialBoneRotations.get(bodyBones.head.uuid).y, 0.05);
-                }
+                // ==========================
+                // APPLY ARMS
+                // ==========================
+                applyBonePose(bodyBones.leftArm, 'leftArm', 0, 0, gesture.lArmZ);
+                applyBonePose(bodyBones.rightArm, 'rightArm', 0, 0, gesture.rArmZ);
+                applyBonePose(bodyBones.leftForeArm, 'leftForeArm', gesture.lForeArmX, 0, gesture.lForeArmZ);
+                applyBonePose(bodyBones.rightForeArm, 'rightForeArm', gesture.rForeArmX, 0, gesture.rForeArmZ);
+                applyBonePose(bodyBones.leftHand, 'leftHand', gesture.lHandX, 0, 0);
+                applyBonePose(bodyBones.rightHand, 'rightHand', gesture.rHandX, 0, 0);
 
-                if(bodyBones.leftUpLeg) bodyBones.leftUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.leftUpLeg.rotation.z, initialBoneRotations.get(bodyBones.leftUpLeg.uuid).z + breath * 0.015, 0.1);
-                if(bodyBones.rightUpLeg) bodyBones.rightUpLeg.rotation.z = THREE.MathUtils.lerp(bodyBones.rightUpLeg.rotation.z, initialBoneRotations.get(bodyBones.rightUpLeg.uuid).z + breath * 0.015, 0.1);
+                // ==========================
+                // APPLY LEGS (breathing only)
+                // ==========================
+                applyBonePose(bodyBones.leftUpLeg, 'leftUpLeg', 0, 0, breathSin * 0.012);
+                applyBonePose(bodyBones.rightUpLeg, 'rightUpLeg', 0, 0, breathSin * 0.012);
 
-                // Apply Jaw Rotation or Morph Target
+                // ==========================
+                // APPLY JAW / LIPSYNC
+                // ==========================
+                const jawAmount = lipSync.smoothed * 0.28; // max jaw open = 0.28 radians (very wide)
                 if (jawBone) {
-                    jawBone.rotation.x = mouthOpenIntensity; 
+                    jawBone.rotation.x = jawAmount;
                 } else {
+                    // Try morph targets
                     modelGroup.traverse((child) => {
                         if (child.morphTargetInfluences && child.morphTargetDictionary) {
-                            const jawOpenIdx = child.morphTargetDictionary['jawOpen'] || child.morphTargetDictionary['mouth_open'] || child.morphTargetDictionary['Mouth_Open'];
+                            const jawOpenIdx = child.morphTargetDictionary['jawOpen'] 
+                                            || child.morphTargetDictionary['mouth_open'] 
+                                            || child.morphTargetDictionary['Mouth_Open']
+                                            || child.morphTargetDictionary['mouthOpen'];
                             if (jawOpenIdx !== undefined) {
-                                child.morphTargetInfluences[jawOpenIdx] = mouthOpenIntensity * 3.0;
+                                child.morphTargetInfluences[jawOpenIdx] = lipSync.smoothed;
                             }
+                            // Also try viseme shapes for even better lipsync
+                            const visemeAA = child.morphTargetDictionary['viseme_aa'] || child.morphTargetDictionary['visemeAA'];
+                            const visemeO = child.morphTargetDictionary['viseme_O'] || child.morphTargetDictionary['visemeO'];
+                            if (visemeAA !== undefined) child.morphTargetInfluences[visemeAA] = lipSync.smoothed * 0.7;
+                            if (visemeO !== undefined) child.morphTargetInfluences[visemeO] = lipSync.smoothed * 0.5;
                         }
                     });
                 }
 
-                // Natural Blinking
-                let blinkValue = 0;
-                if (Math.floor(time) % 5 === 0 && (time % 5) < 0.15) {
-                    blinkValue = 1.0;
-                } else if (Math.floor(time) % 8 === 0 && (time % 8) < 0.15) {
-                    blinkValue = 1.0; // Double blink variance
-                }
+                // ==========================
+                // APPLY BLINKING
+                // ==========================
                 modelGroup.traverse((child) => {
                     if (child.morphTargetInfluences && child.morphTargetDictionary) {
-                        const blinkL = child.morphTargetDictionary['eyeBlinkLeft'] || child.morphTargetDictionary['blink_left'];
-                        const blinkR = child.morphTargetDictionary['eyeBlinkRight'] || child.morphTargetDictionary['blink_right'];
-                        if (blinkL !== undefined) child.morphTargetInfluences[blinkL] = blinkValue;
-                        if (blinkR !== undefined) child.morphTargetInfluences[blinkR] = blinkValue;
+                        const blinkL = child.morphTargetDictionary['eyeBlinkLeft'] 
+                                    || child.morphTargetDictionary['blink_left']
+                                    || child.morphTargetDictionary['EyeBlinkLeft'];
+                        const blinkR = child.morphTargetDictionary['eyeBlinkRight'] 
+                                    || child.morphTargetDictionary['blink_right']
+                                    || child.morphTargetDictionary['EyeBlinkRight'];
+                        if (blinkL !== undefined) child.morphTargetInfluences[blinkL] = blink.value;
+                        if (blinkR !== undefined) child.morphTargetInfluences[blinkR] = blink.value;
                     }
                 });
             }
@@ -708,8 +1043,8 @@
         }
 
         /* ==========================================
-           3. UI CONTROLS & HANDLERS
-           ========================================== */
+           UI CONTROLS & HANDLERS
+        ========================================== */
         const btnFullscreen = document.getElementById('btn-fullscreen');
         const btnSound = document.getElementById('btn-sound');
         const btnMic = document.getElementById('btn-mic');
@@ -720,7 +1055,7 @@
         btnSound.addEventListener('click', () => {
             soundEnabled = !soundEnabled;
             btnSound.classList.toggle('active-state');
-            if(!soundEnabled) {
+            if (!soundEnabled) {
                 window.speechSynthesis.cancel();
                 isSpeaking = false;
             }
@@ -757,8 +1092,8 @@
         }
 
         /* ==========================================
-           4. CHAT PIPELINES ENGINE (ON-DEMAND LISTENING & TYPING)
-           ========================================== */
+           CHAT PIPELINE ENGINE
+        ========================================== */
         const chatText = document.getElementById('chat-text');
         const audioWave = document.getElementById('audio-wave');
         const lessonBody = document.getElementById('lesson-body');
@@ -771,7 +1106,7 @@
         
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            recognition.continuous = false; // Changed to false (Push to talk style)
+            recognition.continuous = false;
             recognition.interimResults = false;
 
             recognition.onstart = () => {
@@ -784,19 +1119,13 @@
             recognition.onresult = (event) => {
                 if (isSpeaking || isEngineProcessing) return;
                 const transcript = event.results[0][0].transcript.trim();
-                
                 if (transcript.length > 2) {
                     handleUserQuery(transcript);
                 }
             };
 
-            recognition.onerror = (e) => {
-                resetMicState();
-            };
-
-            recognition.onend = () => {
-                resetMicState();
-            };
+            recognition.onerror = (e) => { resetMicState(); };
+            recognition.onend = () => { resetMicState(); };
         } else {
             chatText.innerHTML = "Your browser doesn't support Voice AI. Please use Chrome.";
         }
@@ -809,14 +1138,12 @@
             }
         }
 
-        // Trigger Mic manually
         btnMic.addEventListener('click', () => {
             if (recognition && !isSpeaking && !isEngineProcessing) {
                 try { recognition.start(); } catch(e) {}
             }
         });
 
-        // Trigger text search
         function submitSearchQuery() {
             const query = searchInput.value.trim();
             if (query.length > 0 && !isEngineProcessing && !isSpeaking) {
@@ -826,16 +1153,13 @@
         }
 
         btnSendText.addEventListener('click', submitSearchQuery);
-
         searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                submitSearchQuery();
-            }
+            if (e.key === 'Enter') submitSearchQuery();
         });
 
         async function handleUserQuery(query) {
             isEngineProcessing = true;
-            try { recognition.stop(); } catch(e){} 
+            try { recognition.stop(); } catch(e) {}
             
             chatText.innerHTML = `<strong>You:</strong> ${query}`;
             
@@ -896,7 +1220,7 @@
                 return;
             }
             window.speechSynthesis.cancel();
-            try { recognition.stop(); } catch(e){}
+            try { recognition.stop(); } catch(e) {}
 
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1.0;
@@ -905,10 +1229,18 @@
             
             const voices = window.speechSynthesis.getVoices();
             const chosenVoice = voices.find(v => v.lang.includes(currentLangCode.split('-')[0])) || voices[0];
-            if(chosenVoice) utterance.voice = chosenVoice;
+            if (chosenVoice) utterance.voice = chosenVoice;
 
             utterance.onstart = () => {
                 isSpeaking = true;
+                // Reset lipsync state for fresh start
+                lipSync.phase1 = Math.random() * Math.PI * 2;
+                lipSync.phase2 = Math.random() * Math.PI * 2;
+                lipSync.phase3 = Math.random() * Math.PI * 2;
+                lipSync.pauseTimer = 1.0 + Math.random() * 1.5;
+                lipSync.inPause = false;
+                // Trigger first gesture immediately
+                gesture.nextGestureTime = 0;
                 audioWave.classList.remove('listening');
                 audioWave.classList.add('speaking');
             };
