@@ -393,10 +393,189 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+        // ==========================================
+        // API KEYS & CONFIG
+        // ==========================================
         const GEMINI_API_KEY = "AIzaSyDC3vs-oTy2ff_eJXS_MRd_4oN3AMdnxBs";
-        
+        const ELEVENLABS_API_KEY = "sk_440f24473b04dd28904c90deadfcc267ccb0a95632112a22";
+
+        // Male voice - ElevenLabs "Adam" (deep, professional male)
+        const ELEVENLABS_VOICE_ID = "pNInz6obpgDQGcFmaJgB"; // Adam - deep male voice
+
         let currentLangCode = 'en-US';
         let geminiPromptLang = 'English';
+
+        // ==========================================
+        // AUDIO CONTEXT & LIPSYNC ENGINE
+        // ==========================================
+        let audioCtx = null;
+        let analyserNode = null;
+        let currentAudioSource = null;
+        let currentAudioElement = null;
+        let audioDataArray = null;
+        let lipsyncFromAudio = false;
+
+        // Smoothed lipsync value driven by real audio amplitude
+        let audioLipValue = 0;
+        let audioLipSmoothed = 0;
+
+        function getAudioContext() {
+            if (!audioCtx || audioCtx.state === 'closed') {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function setupAnalyser(sourceNode) {
+            const ctx = getAudioContext();
+            analyserNode = ctx.createAnalyser();
+            analyserNode.fftSize = 512;
+            analyserNode.smoothingTimeConstant = 0.75;
+            audioDataArray = new Uint8Array(analyserNode.frequencyBinCount);
+
+            sourceNode.connect(analyserNode);
+            analyserNode.connect(ctx.destination);
+        }
+
+        function getAudioAmplitude() {
+            if (!analyserNode || !audioDataArray) return 0;
+            analyserNode.getByteFrequencyData(audioDataArray);
+
+            // Focus on speech frequency range: ~80Hz to ~3000Hz
+            // At 44100Hz sample rate with fftSize=512, each bin = ~86Hz
+            // Bins 1-35 roughly cover 86-3000Hz (speech fundamental + formants)
+            let sum = 0;
+            const speechBinStart = 1;
+            const speechBinEnd = Math.min(35, audioDataArray.length);
+            for (let i = speechBinStart; i < speechBinEnd; i++) {
+                sum += audioDataArray[i];
+            }
+            const avg = sum / (speechBinEnd - speechBinStart);
+            // Normalize: 0-255 → 0-1, with boost for visibility
+            return Math.min(1.0, (avg / 255) * 2.8);
+        }
+
+        // ==========================================
+        // ELEVENLABS TTS: Core speak function
+        // ==========================================
+        async function speakText(text) {
+            if (!soundEnabled) return;
+
+            // Stop any currently playing audio
+            stopCurrentAudio();
+
+            try {
+                isSpeaking = true;
+                lipsyncFromAudio = true;
+                audioLipValue = 0;
+                audioLipSmoothed = 0;
+
+                // Reset gesture timing for fresh animation
+                gesture.nextGestureTime = 0;
+                audioWave.classList.remove('listening');
+                audioWave.classList.add('speaking');
+                document.getElementById('status-text').innerText = "SPEAKING";
+
+                const response = await fetch(
+                    `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'xi-api-key': ELEVENLABS_API_KEY,
+                            'Content-Type': 'application/json',
+                            'Accept': 'audio/mpeg'
+                        },
+                        body: JSON.stringify({
+                            text: text,
+                            model_id: 'eleven_multilingual_v2',
+                            voice_settings: {
+                                stability: 0.55,
+                                similarity_boost: 0.80,
+                                style: 0.35,
+                                use_speaker_boost: true
+                            }
+                        })
+                    }
+                );
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`ElevenLabs API error ${response.status}: ${errText}`);
+                }
+
+                const arrayBuffer = await response.arrayBuffer();
+                const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+                const blobUrl = URL.createObjectURL(blob);
+
+                // Create Audio element for playback
+                const audio = new Audio(blobUrl);
+                audio.crossOrigin = 'anonymous';
+                currentAudioElement = audio;
+
+                // Wire up AudioContext analyser for real lipsync
+                const ctx = getAudioContext();
+                const sourceNode = ctx.createMediaElementSource(audio);
+                currentAudioSource = sourceNode;
+                setupAnalyser(sourceNode);
+
+                await new Promise((resolve, reject) => {
+                    audio.onended = () => {
+                        URL.revokeObjectURL(blobUrl);
+                        onSpeakEnd();
+                        resolve();
+                    };
+                    audio.onerror = (e) => {
+                        URL.revokeObjectURL(blobUrl);
+                        onSpeakEnd();
+                        reject(e);
+                    };
+                    audio.play().catch(err => {
+                        // Autoplay blocked — fallback gracefully
+                        console.warn('Autoplay blocked:', err);
+                        onSpeakEnd();
+                        resolve();
+                    });
+                });
+
+            } catch (error) {
+                console.error('ElevenLabs TTS error:', error);
+                onSpeakEnd();
+                // Fallback: show error in chat
+                chatText.innerHTML = `<strong style="color:var(--danger)">Voice unavailable. Check API key or network.</strong>`;
+            }
+        }
+
+        function stopCurrentAudio() {
+            if (currentAudioElement) {
+                currentAudioElement.pause();
+                currentAudioElement.src = '';
+                currentAudioElement = null;
+            }
+            if (currentAudioSource) {
+                try { currentAudioSource.disconnect(); } catch(e) {}
+                currentAudioSource = null;
+            }
+            if (analyserNode) {
+                try { analyserNode.disconnect(); } catch(e) {}
+                analyserNode = null;
+            }
+            audioDataArray = null;
+        }
+
+        function onSpeakEnd() {
+            isSpeaking = false;
+            lipsyncFromAudio = false;
+            isEngineProcessing = false;
+            audioLipValue = 0;
+            audioWave.classList.remove('speaking');
+            document.getElementById('status-text').innerText = "IDLE";
+            chatText.innerHTML = currentLangCode === 'hi-IN'
+                ? "बोलने के लिए माइक बटन पर क्लिक करें..."
+                : "Click the mic button to speak...";
+        }
 
         window.startGame = function(langCode) {
             document.getElementById('lang-overlay').style.opacity = '0';
@@ -406,15 +585,21 @@
 
             currentLangCode = langCode;
             geminiPromptLang = langCode === 'hi-IN' ? 'Hindi' : 'English';
-            
+
             if (recognition) {
                 recognition.lang = currentLangCode;
             }
 
-            const greetingText = langCode === 'hi-IN' ? "नमस्ते, मैं मिस्टर अमृत हूँ। आप माइक बटन दबाकर अपना सवाल पूछ सकते हैं।" : "Hello, I am Mr. Amrit. Click the mic button to ask me a question.";
+            const greetingText = langCode === 'hi-IN'
+                ? "नमस्ते, मैं मिस्टर अमृत हूँ। आप माइक बटन दबाकर अपना सवाल पूछ सकते हैं।"
+                : "Hello, I am Mr. Amrit. I am your AI teacher. Click the mic button or type your question to get started.";
             
-            document.getElementById('chat-text').innerText = langCode === 'hi-IN' ? "बोलने के लिए माइक बटन पर क्लिक करें..." : "Click the mic button to speak...";
-            document.getElementById('ai-search-input').placeholder = langCode === 'hi-IN' ? "अपना सवाल यहाँ टाइप करें..." : "Type your question here...";
+            document.getElementById('chat-text').innerText = langCode === 'hi-IN'
+                ? "बोलने के लिए माइक बटन पर क्लिक करें..."
+                : "Click the mic button to speak...";
+            document.getElementById('ai-search-input').placeholder = langCode === 'hi-IN'
+                ? "अपना सवाल यहाँ टाइप करें..."
+                : "Type your question here...";
 
             speakText(greetingText);
         }
@@ -436,6 +621,9 @@
         };
         const initialBoneRotations = new Map();
         
+        // Morph target cache
+        let morphMeshes = [];
+        
         const container = document.getElementById('canvas-container');
         const wrapper = document.getElementById('video-wrapper');
         const loaderUI = document.getElementById('loader');
@@ -445,29 +633,20 @@
         let isSpeaking = false;
 
         // ==========================================
-        // ADVANCED LIPSYNC ENGINE
+        // AUDIO-DRIVEN LIPSYNC STATE
         // ==========================================
-        // We track multiple independent oscillators to simulate real speech
-        // Real speech = fast consonant bursts + wide vowel peaks + micro pauses
         let lipSync = {
-            raw: 0,           // raw computed target
-            smoothed: 0,      // smoothed output applied to jaw
-            // Phase accumulators for each oscillator layer
-            phase1: 0,        // syllable layer (~5-8 syllables/sec)
-            phase2: 0,        // vowel peak layer (~2-3 Hz)
-            phase3: 0,        // micro stutter layer (rapid small)
-            pauseTimer: 0,    // counts down to next micro-pause
-            pauseDuration: 0, // how long current pause lasts
-            inPause: false,
+            smoothed: 0,
+            // Organic micro-oscillators layered on top of real audio amplitude
+            phase1: 0,   // micro-rhythm layer
+            phase2: 0,   // vowel-peak layer
+            microNoise: 0,
         };
 
         // ==========================================
-        // ADVANCED BODY GESTURE ENGINE
+        // GESTURE ENGINE
         // ==========================================
-        // Teacher gestures: head nods, hand raises, lean forward/back
-        // We have multiple gesture "states" that blend organically
         let gesture = {
-            // Current smoothed bone offsets
             lArmZ: 0, rArmZ: 0,
             lForeArmX: 0, rForeArmX: 0,
             lForeArmZ: 0, rForeArmZ: 0,
@@ -476,7 +655,6 @@
             spine1X: 0,
             neckX: 0, neckY: 0,
             headX: 0, headY: 0, headZ: 0,
-            // Targets (randomized periodically)
             tLArmZ: 0, tRArmZ: 0,
             tLForeArmX: 0, tRForeArmX: 0,
             tLForeArmZ: 0, tRForeArmZ: 0,
@@ -485,28 +663,25 @@
             tSpine1X: 0,
             tNeckX: 0, tNeckY: 0,
             tHeadX: 0, tHeadY: 0, tHeadZ: 0,
-            // Gesture phase counter
             nextGestureTime: 0,
-            gesturePhase: 0,        // 0=rest, 1=point-left, 2=point-right, 3=open-both, 4=lean-explain, 5=nod
-            gestureStep: 0,
+            gesturePhase: 0,
         };
 
         // Blinking system
         let blink = {
-            state: 0,           // 0 = open, 1 = closing, 2 = opening
-            value: 0,           // 0 = fully open, 1 = fully closed
-            nextBlinkTime: 3,   // time until next blink
-            blinkSpeed: 8,      // speed of blink
+            state: 0,
+            value: 0,
+            nextBlinkTime: 3,
+            blinkSpeed: 8,
         };
 
-        // Breathing system (gentle idle sway)
+        // Breathing system
         let breath = {
             phase: 0,
             chestPhase: 0,
         };
 
         const uiModeBadge = document.getElementById('ui-mode-badge');
-
         const absoluteCenterTarget = new THREE.Vector3(0, 1.1, 0);
 
         init3D();
@@ -534,7 +709,6 @@
             keyLight.position.set(1, 3, 3);
             scene.add(keyLight);
 
-            // Soft fill light from left
             const fillLight = new THREE.DirectionalLight(0xfff5e0, 0.6);
             fillLight.position.set(-2, 1, 1);
             scene.add(fillLight);
@@ -563,6 +737,8 @@
                 clearTimeout(fallbackTimeout);
                 const model = gltf.scene;
 
+                morphMeshes = [];
+
                 model.traverse((child) => {
                     if (child.isMesh) {
                         child.castShadow = false;
@@ -571,25 +747,25 @@
                             child.material.roughness = 0.5;
                             child.material.metalness = 0.0;
                         }
+                        // Cache all meshes with morph targets
+                        if (child.morphTargetInfluences && child.morphTargetDictionary) {
+                            morphMeshes.push(child);
+                        }
                     }
                     if (child.isBone) {
                         initialBoneRotations.set(child.uuid, child.rotation.clone());
                         
                         const name = child.name.toLowerCase();
 
-                        // Jaw / mouth
                         if (name.includes('jaw') || name.includes('lowerjaw') || name.includes('mouth')) jawBone = child;
 
-                        // Spine chain
                         if ((name.includes('spine') && !name.includes('spine1') && !name.includes('spine2')) || name.includes('chest')) bodyBones.spine = child;
                         if (name.includes('spine1') || name.includes('spine_1')) bodyBones.spine1 = child;
                         if (name.includes('spine2') || name.includes('upperchest')) bodyBones.spine2 = child;
 
-                        // Head / neck
                         if (name.includes('neck')) bodyBones.neck = child;
                         if (name.includes('head') && !name.includes('headtop') && !name.includes('head_end')) bodyBones.head = child;
 
-                        // Arms
                         if (name.includes('leftshoulder') || name.includes('left_shoulder') || name.includes('lshoulder')) bodyBones.leftShoulder = child;
                         if (name.includes('rightshoulder') || name.includes('right_shoulder') || name.includes('rshoulder')) bodyBones.rightShoulder = child;
                         if ((name.includes('leftarm') || name.includes('left_arm') || name.includes('larm') || name.includes('upperarm_l')) && !name.includes('forearm')) bodyBones.leftArm = child;
@@ -599,7 +775,6 @@
                         if (name.includes('lefthand') || name.includes('left_hand') || name.includes('lhand') || name.includes('hand_l')) bodyBones.leftHand = child;
                         if (name.includes('righthand') || name.includes('right_hand') || name.includes('rhand') || name.includes('hand_r')) bodyBones.rightHand = child;
 
-                        // Legs
                         if (name.includes('leftupleg') || name.includes('left_leg') || name.includes('leftthigh') || name.includes('upleg_l')) bodyBones.leftUpLeg = child;
                         if (name.includes('rightupleg') || name.includes('right_leg') || name.includes('rightthigh') || name.includes('upleg_r')) bodyBones.rightUpLeg = child;
                     }
@@ -658,82 +833,55 @@
         }
 
         /* ==========================================
-           LIPSYNC: Advanced multi-layer simulation
-           Layer 1: Syllable rhythm (fast ~6Hz) - base opening/closing
-           Layer 2: Vowel peaks (2-3Hz) - wide opens for A/E/O
-           Layer 3: Micro-stutters (very fast) - stop consonants
-           Layer 4: Natural micro-pauses (random gaps between words)
+           AUDIO-DRIVEN LIPSYNC
+           Real amplitude from AnalyserNode drives jaw.
+           Organic micro-oscillators add human-like variation
+           on top of the clean audio signal so it never looks robotic.
         ========================================== */
         function updateLipSync(dt) {
-            if (!isSpeaking) {
-                // Smoothly close mouth
-                lipSync.smoothed = THREE.MathUtils.lerp(lipSync.smoothed, 0, dt * 12);
+            if (!isSpeaking || !lipsyncFromAudio) {
+                // Mouth closes smoothly when not speaking
+                lipSync.smoothed = THREE.MathUtils.lerp(lipSync.smoothed, 0, dt * 14);
                 return;
             }
 
-            // Update pause system
-            if (lipSync.inPause) {
-                lipSync.pauseTimer -= dt;
-                if (lipSync.pauseTimer <= 0) {
-                    lipSync.inPause = false;
-                    // Schedule next pause (every 1.5 to 3.5 seconds)
-                    lipSync.pauseTimer = 1.5 + Math.random() * 2.0;
-                }
-                // During pause: mouth slowly closes
-                lipSync.raw = THREE.MathUtils.lerp(lipSync.raw, 0, dt * 8);
-            } else {
-                lipSync.pauseTimer -= dt;
-                if (lipSync.pauseTimer <= 0) {
-                    lipSync.inPause = true;
-                    lipSync.pauseDuration = 0.08 + Math.random() * 0.15;
-                    lipSync.pauseTimer = lipSync.pauseDuration;
-                }
+            // --- Real audio amplitude ---
+            const rawAmplitude = getAudioAmplitude(); // 0 to 1
 
-                // Layer 1: Syllable rhythm - the main open/close cycle
-                // Real speech: ~4-7 syllables per second
-                lipSync.phase1 += dt * (5.5 + Math.sin(lipSync.phase2 * 0.3) * 1.5);
-                // Rectified sine = only opens, never goes negative
-                const syllable = Math.max(0, Math.sin(lipSync.phase1 * Math.PI));
-                // Sharp attack, slow release = realistic jaw movement
-                const syllableSharp = Math.pow(syllable, 0.5) * Math.pow(syllable, 2) * 2;
-                const syllableVal = Math.min(1, syllableSharp * 0.55);
+            // --- Layer 1: Micro-rhythm oscillator (adds syllabic texture) ---
+            // This makes the mouth feel like it's forming words, not just
+            // opening/closing proportionally to volume
+            lipSync.phase1 += dt * 6.5;
+            const rhythmMod = (Math.sin(lipSync.phase1 * Math.PI) * 0.5 + 0.5); // 0 to 1
 
-                // Layer 2: Vowel peaks - wide slow opens
-                lipSync.phase2 += dt * 2.3;
-                const vowelRaw = Math.sin(lipSync.phase2) * 0.5 + 0.5;
-                const vowelPeak = Math.pow(vowelRaw, 3) * 0.5; // Only fire on peaks
+            // --- Layer 2: Vowel-peak oscillator (slow wide opens) ---
+            lipSync.phase2 += dt * 2.1;
+            const vowelMod = Math.pow(Math.max(0, Math.sin(lipSync.phase2)), 2) * 0.2;
 
-                // Layer 3: Micro-variation for natural imperfection
-                lipSync.phase3 += dt * 18;
-                const micro = (Math.sin(lipSync.phase3) * 0.5 + 0.5) * 0.07;
+            // --- Combine: audio amplitude is dominant, oscillators add texture ---
+            // When audio is loud → mouth wide open (real audio)
+            // When audio is quiet → micro-movements from oscillators prevent dead stillness
+            const baseOpen = rawAmplitude;
+            const textureAdd = rawAmplitude > 0.05
+                ? rhythmMod * rawAmplitude * 0.35 + vowelMod
+                : 0;
 
-                // Combine all layers
-                lipSync.raw = syllableVal + vowelPeak + micro;
-                lipSync.raw = Math.min(1.0, lipSync.raw);
-            }
+            const target = Math.min(1.0, baseOpen + textureAdd);
 
-            // Smooth the raw signal for organic jaw movement
-            // Fast towards open (jaw drops fast), slow towards close (jaw rises slowly)
-            const speed = lipSync.raw > lipSync.smoothed ? 22 : 14;
-            lipSync.smoothed = THREE.MathUtils.lerp(lipSync.smoothed, lipSync.raw, dt * speed);
+            // Asymmetric smoothing: jaw drops fast, rises slowly (like real jaw physics)
+            const openSpeed = target > lipSync.smoothed ? 28 : 16;
+            lipSync.smoothed = THREE.MathUtils.lerp(lipSync.smoothed, target, dt * openSpeed);
         }
 
         /* ==========================================
-           GESTURE ENGINE: Natural teacher body movement
-           Teachers do these things while explaining:
-           - Lean slightly forward when making a point
-           - Raise one or both hands for emphasis
-           - Nod head for confirmation
-           - Turn slightly left/right
-           - Bend forearm upward when listing things
-           - Open palms when explaining broadly
+           GESTURE ENGINE
         ========================================== */
         function pickNewGesture(time) {
             gesture.gesturePhase = Math.floor(Math.random() * 7);
-            gesture.nextGestureTime = time + 0.8 + Math.random() * 1.8; // 0.8 to 2.6 seconds between gestures
+            gesture.nextGestureTime = time + 0.8 + Math.random() * 1.8;
 
             switch (gesture.gesturePhase) {
-                case 0: // REST - arms naturally down, slight sway
+                case 0: // REST
                     gesture.tLArmZ = 0.05 + Math.random() * 0.05;
                     gesture.tRArmZ = -(0.05 + Math.random() * 0.05);
                     gesture.tLForeArmX = -0.1 - Math.random() * 0.15;
@@ -748,7 +896,7 @@
                     gesture.tHeadX = 0;
                     break;
 
-                case 1: // POINT LEFT - raise right arm, forearm up, pointing gesture
+                case 1: // POINT LEFT
                     gesture.tLArmZ = 0.05;
                     gesture.tRArmZ = -0.35 - Math.random() * 0.1;
                     gesture.tRForeArmX = -0.7 - Math.random() * 0.2;
@@ -762,7 +910,7 @@
                     gesture.tHeadX = 0.02;
                     break;
 
-                case 2: // POINT RIGHT - raise left arm
+                case 2: // POINT RIGHT
                     gesture.tRArmZ = -0.05;
                     gesture.tLArmZ = 0.35 + Math.random() * 0.1;
                     gesture.tLForeArmX = -0.7 - Math.random() * 0.2;
@@ -776,7 +924,7 @@
                     gesture.tHeadX = 0.02;
                     break;
 
-                case 3: // OPEN BOTH HANDS - explaining broadly, both forearms up symmetrically
+                case 3: // OPEN BOTH HANDS
                     gesture.tLArmZ = 0.22 + Math.random() * 0.08;
                     gesture.tRArmZ = -(0.22 + Math.random() * 0.08);
                     gesture.tLForeArmX = -0.6 - Math.random() * 0.2;
@@ -792,7 +940,7 @@
                     gesture.tHeadY = 0;
                     break;
 
-                case 4: // LEAN FORWARD - emphasis, leaning in while explaining a key point
+                case 4: // LEAN FORWARD
                     gesture.tSpine1X = 0.12;
                     gesture.tSpineX = 0.06;
                     gesture.tNeckX = -0.04;
@@ -805,7 +953,7 @@
                     gesture.tHeadY = (Math.random() - 0.5) * 0.04;
                     break;
 
-                case 5: // NOD - head nods up-down, agreeing/confirming while speaking
+                case 5: // NOD
                     gesture.tHeadX = 0.08 + Math.random() * 0.06;
                     gesture.tNeckX = 0.04;
                     gesture.tLArmZ = 0.08;
@@ -817,7 +965,7 @@
                     gesture.tSpine1X = 0.02;
                     break;
 
-                case 6: // ONE HAND RAISED - single forearm up, like listing a point
+                case 6: // ONE HAND RAISED
                     if (Math.random() > 0.5) {
                         gesture.tRForeArmX = -0.9 - Math.random() * 0.2;
                         gesture.tRArmZ = -0.18;
@@ -850,7 +998,6 @@
                     pickNewGesture(time);
                 }
             } else {
-                // Idle: slowly return to natural rest
                 gesture.tLArmZ = 0.04;
                 gesture.tRArmZ = -0.04;
                 gesture.tLForeArmX = 0;
@@ -869,7 +1016,6 @@
                 gesture.tHeadZ = 0;
             }
 
-            // Smooth all gesture values
             gesture.lArmZ = smoothLerp(gesture.lArmZ, gesture.tLArmZ, lerpSpeed, dt);
             gesture.rArmZ = smoothLerp(gesture.rArmZ, gesture.tRArmZ, lerpSpeed, dt);
             gesture.lForeArmX = smoothLerp(gesture.lForeArmX, gesture.tLForeArmX, lerpSpeed * 1.2, dt);
@@ -887,31 +1033,24 @@
             gesture.headY = smoothLerp(gesture.headY, gesture.tHeadY, lerpSpeed * 1.3, dt);
         }
 
-        function updateBlinking(dt, time) {
+        function updateBlinking(dt) {
             blink.nextBlinkTime -= dt;
             if (blink.nextBlinkTime <= 0 && blink.state === 0) {
-                blink.state = 1; // start closing
-                // Next blink in 2-6 seconds, with occasional double-blink
+                blink.state = 1;
                 blink.nextBlinkTime = 2.0 + Math.random() * 4.0;
-                if (Math.random() < 0.15) blink.nextBlinkTime = 0.15; // double blink soon
+                if (Math.random() < 0.15) blink.nextBlinkTime = 0.15;
             }
 
             if (blink.state === 1) {
                 blink.value += dt * blink.blinkSpeed;
-                if (blink.value >= 1) {
-                    blink.value = 1;
-                    blink.state = 2; // now opening
-                }
+                if (blink.value >= 1) { blink.value = 1; blink.state = 2; }
             } else if (blink.state === 2) {
-                blink.value -= dt * blink.blinkSpeed * 0.7; // open slightly slower
-                if (blink.value <= 0) {
-                    blink.value = 0;
-                    blink.state = 0; // fully open
-                }
+                blink.value -= dt * blink.blinkSpeed * 0.7;
+                if (blink.value <= 0) { blink.value = 0; blink.state = 0; }
             }
         }
 
-        function applyBonePose(bone, key, rotX, rotY, rotZ) {
+        function applyBonePose(bone, rotX, rotY, rotZ) {
             if (!bone) return;
             const init = initialBoneRotations.get(bone.uuid);
             if (!init) return;
@@ -920,9 +1059,18 @@
             if (rotZ !== undefined) bone.rotation.z = init.z + rotZ;
         }
 
+        function applyMorphTarget(name, value) {
+            for (const mesh of morphMeshes) {
+                const idx = mesh.morphTargetDictionary[name];
+                if (idx !== undefined) {
+                    mesh.morphTargetInfluences[idx] = Math.max(0, Math.min(1, value));
+                }
+            }
+        }
+
         function animate3D() {
             requestAnimationFrame(animate3D);
-            const dt = Math.min(clock.getDelta(), 0.05); // cap dt to prevent jumps
+            const dt = Math.min(clock.getDelta(), 0.05);
             const time = clock.getElapsedTime();
 
             controls.target.lerp(absoluteCenterTarget, 0.1);
@@ -930,112 +1078,85 @@
             if (modelGroup && modelGroup.children.length > 0) {
 
                 // ---- BREATHING ----
-                breath.phase += dt * 0.28; // ~17 breaths/min = natural adult
-                breath.chestPhase += dt * 0.28;
+                breath.phase += dt * 0.28;
                 const breathSin = Math.sin(breath.phase * Math.PI * 2);
-                // Breathing bob - very subtle
                 const breathBob = breathSin * 0.003;
                 
-                // ---- LIPSYNC UPDATE ----
+                // ---- LIPSYNC UPDATE (real audio driven) ----
                 updateLipSync(dt);
 
                 // ---- GESTURE UPDATE ----
                 updateGestures(dt, time);
 
                 // ---- BLINK UPDATE ----
-                updateBlinking(dt, time);
+                updateBlinking(dt);
 
-                // ==========================
-                // APPLY BREATHING TO BODY
-                // ==========================
-                // Very subtle overall body bob
+                // ---- BODY BOB ----
                 modelGroup.position.y = -0.5 + breathBob + (isSpeaking ? Math.sin(time * 3.5) * 0.003 : 0);
 
-                // ==========================
-                // APPLY SPINE / TORSO
-                // ==========================
-                applyBonePose(bodyBones.spine, 'spine',
+                // ---- SPINE / TORSO ----
+                applyBonePose(bodyBones.spine,
                     gesture.spineX + breathSin * 0.008,
                     gesture.spineY,
                     0
                 );
-                applyBonePose(bodyBones.spine1, 'spine1',
+                applyBonePose(bodyBones.spine1,
                     gesture.spine1X + breathSin * 0.006,
                     0,
                     0
                 );
 
-                // ==========================
-                // APPLY HEAD / NECK
-                // ==========================
-                applyBonePose(bodyBones.neck, 'neck',
-                    gesture.neckX,
-                    gesture.neckY,
-                    0
-                );
-                applyBonePose(bodyBones.head, 'head',
-                    gesture.headX,
-                    gesture.headY,
-                    0
-                );
+                // ---- HEAD / NECK ----
+                applyBonePose(bodyBones.neck, gesture.neckX, gesture.neckY, 0);
+                applyBonePose(bodyBones.head, gesture.headX, gesture.headY, 0);
 
-                // ==========================
-                // APPLY ARMS
-                // ==========================
-                applyBonePose(bodyBones.leftArm, 'leftArm', 0, 0, gesture.lArmZ);
-                applyBonePose(bodyBones.rightArm, 'rightArm', 0, 0, gesture.rArmZ);
-                applyBonePose(bodyBones.leftForeArm, 'leftForeArm', gesture.lForeArmX, 0, gesture.lForeArmZ);
-                applyBonePose(bodyBones.rightForeArm, 'rightForeArm', gesture.rForeArmX, 0, gesture.rForeArmZ);
-                applyBonePose(bodyBones.leftHand, 'leftHand', gesture.lHandX, 0, 0);
-                applyBonePose(bodyBones.rightHand, 'rightHand', gesture.rHandX, 0, 0);
+                // ---- ARMS ----
+                applyBonePose(bodyBones.leftArm, 0, 0, gesture.lArmZ);
+                applyBonePose(bodyBones.rightArm, 0, 0, gesture.rArmZ);
+                applyBonePose(bodyBones.leftForeArm, gesture.lForeArmX, 0, gesture.lForeArmZ);
+                applyBonePose(bodyBones.rightForeArm, gesture.rForeArmX, 0, gesture.rForeArmZ);
+                applyBonePose(bodyBones.leftHand, gesture.lHandX, 0, 0);
+                applyBonePose(bodyBones.rightHand, gesture.rHandX, 0, 0);
 
-                // ==========================
-                // APPLY LEGS (breathing only)
-                // ==========================
-                applyBonePose(bodyBones.leftUpLeg, 'leftUpLeg', 0, 0, breathSin * 0.012);
-                applyBonePose(bodyBones.rightUpLeg, 'rightUpLeg', 0, 0, breathSin * 0.012);
+                // ---- LEGS (breathing only) ----
+                applyBonePose(bodyBones.leftUpLeg, 0, 0, breathSin * 0.012);
+                applyBonePose(bodyBones.rightUpLeg, 0, 0, breathSin * 0.012);
 
-                // ==========================
+                // ============================
                 // APPLY JAW / LIPSYNC
-                // ==========================
-                const jawAmount = lipSync.smoothed * 0.28; // max jaw open = 0.28 radians (very wide)
+                // ============================
+                const jawAmount = lipSync.smoothed * 0.28; // max ~16° = realistic jaw open
+
                 if (jawBone) {
+                    // Bone-based jaw
                     jawBone.rotation.x = jawAmount;
-                } else {
-                    // Try morph targets
-                    modelGroup.traverse((child) => {
-                        if (child.morphTargetInfluences && child.morphTargetDictionary) {
-                            const jawOpenIdx = child.morphTargetDictionary['jawOpen'] 
-                                            || child.morphTargetDictionary['mouth_open'] 
-                                            || child.morphTargetDictionary['Mouth_Open']
-                                            || child.morphTargetDictionary['mouthOpen'];
-                            if (jawOpenIdx !== undefined) {
-                                child.morphTargetInfluences[jawOpenIdx] = lipSync.smoothed;
-                            }
-                            // Also try viseme shapes for even better lipsync
-                            const visemeAA = child.morphTargetDictionary['viseme_aa'] || child.morphTargetDictionary['visemeAA'];
-                            const visemeO = child.morphTargetDictionary['viseme_O'] || child.morphTargetDictionary['visemeO'];
-                            if (visemeAA !== undefined) child.morphTargetInfluences[visemeAA] = lipSync.smoothed * 0.7;
-                            if (visemeO !== undefined) child.morphTargetInfluences[visemeO] = lipSync.smoothed * 0.5;
-                        }
-                    });
                 }
 
-                // ==========================
+                // Morph target lipsync (visemes + jawOpen)
+                // jawOpen: direct mapping to amplitude
+                applyMorphTarget('jawOpen', lipSync.smoothed);
+                applyMorphTarget('mouthOpen', lipSync.smoothed);
+
+                // Viseme shapes: layer vowel shapes on top
+                // viseme_aa (wide open: A sound) peaks when mouth wide
+                // viseme_O (rounded: O sound) peaks slightly later
+                const aa = Math.pow(lipSync.smoothed, 0.7);
+                const oh = Math.pow(lipSync.smoothed, 1.2) * Math.max(0, Math.sin(lipSync.phase2));
+                applyMorphTarget('viseme_aa', aa * 0.8);
+                applyMorphTarget('viseme_A', aa * 0.8);
+                applyMorphTarget('viseme_O', oh * 0.5);
+                applyMorphTarget('viseme_oh', oh * 0.5);
+                applyMorphTarget('viseme_E', lipSync.smoothed * 0.4);
+
+                // ============================
                 // APPLY BLINKING
-                // ==========================
-                modelGroup.traverse((child) => {
-                    if (child.morphTargetInfluences && child.morphTargetDictionary) {
-                        const blinkL = child.morphTargetDictionary['eyeBlinkLeft'] 
-                                    || child.morphTargetDictionary['blink_left']
-                                    || child.morphTargetDictionary['EyeBlinkLeft'];
-                        const blinkR = child.morphTargetDictionary['eyeBlinkRight'] 
-                                    || child.morphTargetDictionary['blink_right']
-                                    || child.morphTargetDictionary['EyeBlinkRight'];
-                        if (blinkL !== undefined) child.morphTargetInfluences[blinkL] = blink.value;
-                        if (blinkR !== undefined) child.morphTargetInfluences[blinkR] = blink.value;
-                    }
-                });
+                // ============================
+                applyMorphTarget('eyeBlinkLeft', blink.value);
+                applyMorphTarget('eyeBlinkRight', blink.value);
+                applyMorphTarget('EyeBlinkLeft', blink.value);
+                applyMorphTarget('EyeBlinkRight', blink.value);
+                applyMorphTarget('blink_left', blink.value);
+                applyMorphTarget('blink_right', blink.value);
             }
 
             controls.update();
@@ -1056,7 +1177,7 @@
             soundEnabled = !soundEnabled;
             btnSound.classList.toggle('active-state');
             if (!soundEnabled) {
-                window.speechSynthesis.cancel();
+                stopCurrentAudio();
                 isSpeaking = false;
             }
         });
@@ -1087,8 +1208,9 @@
             uiModeBadge.style.background = "var(--accent-glow)";
             uiModeBadge.style.color = "var(--accent-color)";
             document.getElementById('status-text').innerText = "IDLE";
-            window.speechSynthesis.cancel();
+            stopCurrentAudio();
             isSpeaking = false;
+            lipsyncFromAudio = false;
         }
 
         /* ==========================================
@@ -1139,6 +1261,8 @@
         }
 
         btnMic.addEventListener('click', () => {
+            // Resume AudioContext on user gesture (required by browsers)
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             if (recognition && !isSpeaking && !isEngineProcessing) {
                 try { recognition.start(); } catch(e) {}
             }
@@ -1152,9 +1276,18 @@
             }
         }
 
-        btnSendText.addEventListener('click', submitSearchQuery);
+        btnSendText.addEventListener('click', () => {
+            // Resume AudioContext on user gesture
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            else getAudioContext(); // initialize on first click
+            submitSearchQuery();
+        });
+
         searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') submitSearchQuery();
+            if (e.key === 'Enter') {
+                getAudioContext();
+                submitSearchQuery();
+            }
         });
 
         async function handleUserQuery(query) {
@@ -1167,7 +1300,7 @@
             lessonBody.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">Thinking...</span>`;
 
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -1197,7 +1330,9 @@
 
         async function streamResponseIntoCards(text) {
             lessonBody.innerHTML = "";
-            if (soundEnabled) speakText(text);
+
+            // Start ElevenLabs TTS (non-blocking — streams text display while audio loads)
+            const speakPromise = soundEnabled ? speakText(text) : Promise.resolve();
 
             const card = document.createElement('div');
             card.className = 'teaching-card';
@@ -1212,59 +1347,16 @@
                 lessonBody.scrollTop = lessonBody.scrollHeight;
                 await new Promise(resolve => setTimeout(resolve, 35));
             }
+
+            // Wait for speech to finish (speakText handles isEngineProcessing = false internally)
+            await speakPromise;
         }
 
-        function speakText(text) {
-            if (!window.speechSynthesis) {
-                isEngineProcessing = false;
-                return;
-            }
-            window.speechSynthesis.cancel();
-            try { recognition.stop(); } catch(e) {}
+        // Initialize AudioContext early on any page interaction
+        document.addEventListener('click', () => {
+            if (!audioCtx) getAudioContext();
+        }, { once: true });
 
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-            utterance.lang = currentLangCode;
-            
-            const voices = window.speechSynthesis.getVoices();
-            const chosenVoice = voices.find(v => v.lang.includes(currentLangCode.split('-')[0])) || voices[0];
-            if (chosenVoice) utterance.voice = chosenVoice;
-
-            utterance.onstart = () => {
-                isSpeaking = true;
-                // Reset lipsync state for fresh start
-                lipSync.phase1 = Math.random() * Math.PI * 2;
-                lipSync.phase2 = Math.random() * Math.PI * 2;
-                lipSync.phase3 = Math.random() * Math.PI * 2;
-                lipSync.pauseTimer = 1.0 + Math.random() * 1.5;
-                lipSync.inPause = false;
-                // Trigger first gesture immediately
-                gesture.nextGestureTime = 0;
-                audioWave.classList.remove('listening');
-                audioWave.classList.add('speaking');
-            };
-            
-            utterance.onend = () => {
-                isSpeaking = false;
-                isEngineProcessing = false;
-                audioWave.classList.remove('speaking');
-                document.getElementById('status-text').innerText = "IDLE";
-                chatText.innerHTML = currentLangCode === 'hi-IN' ? "बोलने के लिए माइक बटन पर क्लिक करें..." : "Click the mic button to speak...";
-            };
-
-            utterance.onerror = () => {
-                isSpeaking = false;
-                isEngineProcessing = false;
-                audioWave.classList.remove('speaking');
-            };
-
-            window.speechSynthesis.speak(utterance);
-        }
-
-        window.speechSynthesis.onvoiceschanged = () => {
-            window.speechSynthesis.getVoices();
-        };
     </script>
 </body>
 </html>
