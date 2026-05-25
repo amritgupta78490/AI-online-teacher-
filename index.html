@@ -396,11 +396,11 @@
         // ==========================================
         // API KEYS & CONFIG
         // ==========================================
-        const GEMINI_API_KEY = "AIzaSyCPfOJ1op9Shd2eT5G7byp66QvAXAHLNW0";
+        const GEMINI_API_KEY = "AIzaSyDC3vs-oTy2ff_eJXS_MRd_4oN3AMdnxBs";
         const ELEVENLABS_API_KEY = "sk_440f24473b04dd28904c90deadfcc267ccb0a95632112a22";
 
-        // Male voice - ElevenLabs "Adam" (deep, professional male)
-        const ELEVENLABS_VOICE_ID = "pNInz6obpgDQGcFmaJgB"; // Adam - deep male voice
+        // Male voice - ElevenLabs "Charlie" (young, energetic male — student/teacher age)
+        const ELEVENLABS_VOICE_ID = "IKne3meq5aSn9XLyUdCD"; // Charlie - young male voice
 
         let currentLangCode = 'en-US';
         let geminiPromptLang = 'English';
@@ -432,30 +432,54 @@
         function setupAnalyser(sourceNode) {
             const ctx = getAudioContext();
             analyserNode = ctx.createAnalyser();
-            analyserNode.fftSize = 512;
-            analyserNode.smoothingTimeConstant = 0.75;
+            // Higher FFT = better frequency resolution for phoneme detection
+            analyserNode.fftSize = 2048;
+            analyserNode.smoothingTimeConstant = 0.82;
             audioDataArray = new Uint8Array(analyserNode.frequencyBinCount);
-
             sourceNode.connect(analyserNode);
             analyserNode.connect(ctx.destination);
         }
 
-        function getAudioAmplitude() {
-            if (!analyserNode || !audioDataArray) return 0;
+        /* ============================================================
+           MULTI-BAND SPECTRAL ANALYSER
+           Returns separate energy values for different speech frequency bands.
+           These map naturally to phoneme categories:
+           - subBass (20-120 Hz)  : chest resonance, M/B/P plosives
+           - bass    (120-400 Hz) : voice fundamental, nasal N/M
+           - low-mid (400-1000Hz) : vowel F1 formant (jaw height: A/E/I/O/U)
+           - mid     (1-3 kHz)    : vowel F2 formant (tongue position: E/I vs A/O)
+           - hiMid   (3-6 kHz)    : fricatives F/V/S/SH, sibilants
+           - hi      (6-12 kHz)   : crisp T/K/P consonant bursts
+        ============================================================ */
+        function getSpectralBands() {
+            if (!analyserNode || !audioDataArray) {
+                return { sub: 0, bass: 0, lowMid: 0, mid: 0, hiMid: 0, hi: 0, total: 0 };
+            }
             analyserNode.getByteFrequencyData(audioDataArray);
 
-            // Focus on speech frequency range: ~80Hz to ~3000Hz
-            // At 44100Hz sample rate with fftSize=512, each bin = ~86Hz
-            // Bins 1-35 roughly cover 86-3000Hz (speech fundamental + formants)
-            let sum = 0;
-            const speechBinStart = 1;
-            const speechBinEnd = Math.min(35, audioDataArray.length);
-            for (let i = speechBinStart; i < speechBinEnd; i++) {
-                sum += audioDataArray[i];
+            const sampleRate = audioCtx.sampleRate;
+            const binSize = sampleRate / analyserNode.fftSize;
+            const n = audioDataArray.length;
+
+            // Helper: average energy in Hz range
+            function bandAvg(fLow, fHigh) {
+                const bStart = Math.max(1, Math.round(fLow / binSize));
+                const bEnd   = Math.min(n - 1, Math.round(fHigh / binSize));
+                if (bEnd <= bStart) return 0;
+                let s = 0;
+                for (let i = bStart; i <= bEnd; i++) s += audioDataArray[i];
+                return (s / ((bEnd - bStart + 1) * 255));
             }
-            const avg = sum / (speechBinEnd - speechBinStart);
-            // Normalize: 0-255 → 0-1, with boost for visibility
-            return Math.min(1.0, (avg / 255) * 2.8);
+
+            const sub    = bandAvg(20,   120);
+            const bass   = bandAvg(120,  400);
+            const lowMid = bandAvg(400,  1000);
+            const mid    = bandAvg(1000, 3000);
+            const hiMid  = bandAvg(3000, 6000);
+            const hi     = bandAvg(6000, 12000);
+            const total  = Math.min(1.0, (sub * 0.6 + bass * 0.9 + lowMid * 1.4 + mid * 1.2 + hiMid * 0.5 + hi * 0.3) / 2.2);
+
+            return { sub, bass, lowMid, mid, hiMid, hi, total };
         }
 
         // ==========================================
@@ -492,9 +516,9 @@
                             text: text,
                             model_id: 'eleven_multilingual_v2',
                             voice_settings: {
-                                stability: 0.55,
-                                similarity_boost: 0.80,
-                                style: 0.35,
+                                stability: 0.45,           // lower = more expressive/dynamic
+                                similarity_boost: 0.82,    // high = stays in character
+                                style: 0.55,               // higher = more emotional delivery
                                 use_speaker_boost: true
                             }
                         })
@@ -633,14 +657,55 @@
         let isSpeaking = false;
 
         // ==========================================
-        // AUDIO-DRIVEN LIPSYNC STATE
+        // CINEMATIC LIPSYNC STATE MACHINE
         // ==========================================
+        // Instead of one value, we track a full set of viseme weights.
+        // Each viseme (mouth shape) has its own smoothed current value
+        // and target value. They blend like a real face — not robotic,
+        // because no single muscle snaps instantly.
         let lipSync = {
-            smoothed: 0,
-            // Organic micro-oscillators layered on top of real audio amplitude
-            phase1: 0,   // micro-rhythm layer
-            phase2: 0,   // vowel-peak layer
-            microNoise: 0,
+            // === JAW CONTROL ===
+            jawOpen: 0,          // smoothed jaw open (0 = closed, 1 = max)
+            jawTarget: 0,        // where jaw wants to be right now
+            jawVelocity: 0,      // spring physics for jaw inertia
+
+            // === VISEME WEIGHTS (current smoothed values) ===
+            // These represent different mouth SHAPES, not just open/close
+            v_aa: 0,    // A  - wide open, tongue down    (pa, ba, ta, aa)
+            v_ee: 0,    // E  - lips spread, mid-high     (ee, ih, kit)
+            v_oh: 0,    // O  - rounded lips              (oh, go, open)
+            v_oo: 0,    // U  - tight round               (you, oo, blue)
+            v_pp: 0,    // B/M/P - lip compression        (bilabials)
+            v_ff: 0,    // F/V - upper teeth on lower lip (fricatives)
+            v_th: 0,    // TH/S - tongue tip near teeth  (sibilants)
+            v_rest: 1,  // Neutral / resting lips
+
+            // === TARGET VISEME WEIGHTS ===
+            t_aa: 0, t_ee: 0, t_oh: 0, t_oo: 0,
+            t_pp: 0, t_ff: 0, t_th: 0, t_rest: 1,
+
+            // === PHONEME TIMING STATE ===
+            // We cycle through phoneme states pseudo-randomly based on audio
+            // This gives the illusion of real speech rhythm
+            phonemePhase: 0,       // cycles at ~speech rate
+            phonemeCycle: 0,       // accumulates to trigger phoneme changes
+            currentPhoneme: 'rest',// name of active phoneme class
+            phonemeHoldTime: 0,    // how long to hold current phoneme
+            phonemeTimer: 0,       // counts down
+
+            // === MICRO-MOTION ===
+            microPhase: 0,         // tiny random lip wiggle
+            smileL: 0, smileR: 0,  // mouth corner smile amount
+            tSmileL: 0, tSmileR: 0,
+
+            // === CLOSE DELAY ===
+            // Human mouths don't snap shut — there's a short delay after
+            // sound stops before the lips fully close
+            closeDelay: 0,         // countdown timer
+
+            // === OSCILLATOR PHASES ===
+            phase1: 0,
+            phase2: 0,
         };
 
         // ==========================================
@@ -832,45 +897,250 @@
             }
         }
 
-        /* ==========================================
-           AUDIO-DRIVEN LIPSYNC
-           Real amplitude from AnalyserNode drives jaw.
-           Organic micro-oscillators add human-like variation
-           on top of the clean audio signal so it never looks robotic.
-        ========================================== */
+        /* ================================================================
+           CINEMATIC LIPSYNC ENGINE  — updateLipSync(dt)
+           
+           Architecture:
+           1. Read multi-band spectral energy from AnalyserNode
+           2. Map energy bands → phoneme class (what kind of sound is happening)
+           3. Set target viseme weights based on phoneme class + audio intensity
+           4. Smooth all visemes independently with spring-physics jaw
+           5. Apply subtle micro-motion so lips always feel alive
+           6. Respect natural close-delay so mouth doesn't snap shut
+
+           Result: lips form realistic speech shapes with proper timing,
+           not just a jaw that flaps up and down with volume.
+        ================================================================ */
         function updateLipSync(dt) {
+            // --- Advance oscillator phases (used for micro-motion) ---
+            lipSync.phase1 += dt * 5.8;
+            lipSync.phase2 += dt * 2.3;
+            lipSync.microPhase += dt * 14.0;
+
             if (!isSpeaking || !lipsyncFromAudio) {
-                // Mouth closes smoothly when not speaking
-                lipSync.smoothed = THREE.MathUtils.lerp(lipSync.smoothed, 0, dt * 14);
+                // SILENCE: mouth closes softly after a short natural delay
+                if (lipSync.closeDelay > 0) {
+                    lipSync.closeDelay -= dt;
+                } else {
+                    // Decay all visemes to zero gently
+                    const decay = dt * 9;
+                    lipSync.jawTarget = 0;
+                    lipSync.t_aa = 0; lipSync.t_ee = 0; lipSync.t_oh = 0;
+                    lipSync.t_oo = 0; lipSync.t_pp = 0; lipSync.t_ff = 0;
+                    lipSync.t_th = 0; lipSync.t_rest = 1;
+                    lipSync.tSmileL = 0; lipSync.tSmileR = 0;
+                }
+                // Still apply spring/smooth even during silence for organic close
+                applyVisemeSmoothing(dt, 0.0);
                 return;
             }
 
-            // --- Real audio amplitude ---
-            const rawAmplitude = getAudioAmplitude(); // 0 to 1
+            // === STEP 1: Read spectral energy ===
+            const bands = getSpectralBands();
+            const amplitude = bands.total; // overall speech loudness
 
-            // --- Layer 1: Micro-rhythm oscillator (adds syllabic texture) ---
-            // This makes the mouth feel like it's forming words, not just
-            // opening/closing proportionally to volume
-            lipSync.phase1 += dt * 6.5;
-            const rhythmMod = (Math.sin(lipSync.phase1 * Math.PI) * 0.5 + 0.5); // 0 to 1
+            // Reset close-delay while speaking
+            lipSync.closeDelay = 0.12; // 120ms close delay after sound stops
 
-            // --- Layer 2: Vowel-peak oscillator (slow wide opens) ---
-            lipSync.phase2 += dt * 2.1;
-            const vowelMod = Math.pow(Math.max(0, Math.sin(lipSync.phase2)), 2) * 0.2;
+            // === STEP 2: Determine active PHONEME CLASS from frequency bands ===
+            // Each phoneme class creates a different mouth shape.
+            //
+            // PHONEME CLASSIFICATION RULES (simplified from acoustic phonetics):
+            // - High sub+bass, low hiMid          → nasal / bilabial: M, B, P, N, MA, BA, PA (Hindi: म, ब, प)
+            // - High lowMid, low mid               → open vowel: A, AA (Hindi: आ, अ)
+            // - High mid, moderate lowMid           → front vowel: E, EE, I (Hindi: इ, ई, ए)
+            // - High lowMid+mid balanced            → back/round vowel: O, OH (Hindi: ओ, अो)
+            // - High mid with some hiMid            → close round vowel: U, OO (Hindi: उ, ऊ)
+            // - High hiMid, moderate mid            → fricative: F, V, S, SH (Hindi: फ, व, श)
+            // - High hi bursts, low sustained energy → stop consonants: T, K, D (Hindi: त, क, ड)
+            // - Low overall energy                  → pause/breath
 
-            // --- Combine: audio amplitude is dominant, oscillators add texture ---
-            // When audio is loud → mouth wide open (real audio)
-            // When audio is quiet → micro-movements from oscillators prevent dead stillness
-            const baseOpen = rawAmplitude;
-            const textureAdd = rawAmplitude > 0.05
-                ? rhythmMod * rawAmplitude * 0.35 + vowelMod
-                : 0;
+            lipSync.phonemeTimer -= dt;
 
-            const target = Math.min(1.0, baseOpen + textureAdd);
+            // Only re-evaluate phoneme class every ~60-100ms (like real phoneme rate)
+            if (lipSync.phonemeTimer <= 0) {
+                lipSync.phonemeTimer = 0.055 + Math.random() * 0.045;
 
-            // Asymmetric smoothing: jaw drops fast, rises slowly (like real jaw physics)
-            const openSpeed = target > lipSync.smoothed ? 28 : 16;
-            lipSync.smoothed = THREE.MathUtils.lerp(lipSync.smoothed, target, dt * openSpeed);
+                if (amplitude < 0.04) {
+                    lipSync.currentPhoneme = 'pause';
+                } else if (bands.sub > 0.18 && bands.hiMid < 0.1) {
+                    // Strong sub + low hi → bilabial plosive or nasal
+                    lipSync.currentPhoneme = (Math.random() < 0.6) ? 'bilabial' : 'nasal';
+                } else if (bands.lowMid > 0.2 && bands.mid < 0.15) {
+                    lipSync.currentPhoneme = 'vowel_aa'; // wide open: A, AA
+                } else if (bands.mid > 0.18 && bands.lowMid > 0.12) {
+                    const roll = Math.random();
+                    if (roll < 0.4) lipSync.currentPhoneme = 'vowel_ee';
+                    else if (roll < 0.7) lipSync.currentPhoneme = 'vowel_oh';
+                    else lipSync.currentPhoneme = 'vowel_oo';
+                } else if (bands.hiMid > 0.12) {
+                    lipSync.currentPhoneme = 'fricative'; // F, V, S, SH
+                } else if (bands.hi > 0.08) {
+                    lipSync.currentPhoneme = 'sibilant'; // T, K, D burst
+                } else if (amplitude > 0.06) {
+                    // General speech energy without clear classification
+                    // Randomly mix between common phonemes for natural variety
+                    const opts = ['vowel_aa', 'vowel_ee', 'vowel_oh', 'bilabial'];
+                    lipSync.currentPhoneme = opts[Math.floor(Math.random() * opts.length)];
+                } else {
+                    lipSync.currentPhoneme = 'rest';
+                }
+            }
+
+            // === STEP 3: Set viseme TARGETS based on phoneme + amplitude ===
+            // Amplitude controls INTENSITY (how open), phoneme controls SHAPE
+            // Max jaw opening is intentionally limited — real speech never fully 
+            // opens the jaw, it stays between 10-40% of maximum possible
+            const intensity = Math.min(1.0, amplitude * 1.6);
+            const jawScale  = 0.42; // jaw cap: never more than 42% of max
+            // Reset all targets to zero first
+            lipSync.t_aa = 0; lipSync.t_ee = 0; lipSync.t_oh = 0; lipSync.t_oo = 0;
+            lipSync.t_pp = 0; lipSync.t_ff = 0; lipSync.t_th = 0; lipSync.t_rest = 0;
+            lipSync.tSmileL = 0; lipSync.tSmileR = 0;
+
+            switch (lipSync.currentPhoneme) {
+                case 'vowel_aa':
+                    // Wide open, tongue down: "aa", "ah", "pa", "ta", Hindi: आ, अ, कल, बल
+                    lipSync.jawTarget   = intensity * jawScale * 1.0;
+                    lipSync.t_aa        = intensity * 0.85;
+                    lipSync.t_rest      = 0.1;
+                    lipSync.tSmileL     = intensity * 0.12; // slight lips spread for aa
+                    lipSync.tSmileR     = intensity * 0.12;
+                    break;
+
+                case 'vowel_ee':
+                    // Lips spread, mid jaw: "ee", "ih", Hindi: इ, ई, यह, तिल
+                    lipSync.jawTarget   = intensity * jawScale * 0.55;
+                    lipSync.t_ee        = intensity * 0.8;
+                    lipSync.t_rest      = 0.15;
+                    lipSync.tSmileL     = intensity * 0.25; // ee = wide smile-ish
+                    lipSync.tSmileR     = intensity * 0.25;
+                    break;
+
+                case 'vowel_oh':
+                    // Rounded lips, mid-open: "oh", "go", Hindi: ओ, को, लो
+                    lipSync.jawTarget   = intensity * jawScale * 0.75;
+                    lipSync.t_oh        = intensity * 0.82;
+                    lipSync.t_rest      = 0.1;
+                    break;
+
+                case 'vowel_oo':
+                    // Tight round: "oo", "you", Hindi: उ, ऊ, तू, बू
+                    lipSync.jawTarget   = intensity * jawScale * 0.4;
+                    lipSync.t_oo        = intensity * 0.8;
+                    lipSync.t_rest      = 0.15;
+                    break;
+
+                case 'bilabial':
+                    // Lips pressed together then release: B, P, M
+                    // Hindi: ब, प, म — classic closed-then-burst
+                    // Jaw stays nearly closed, then pops open briefly
+                    const burstPhase = Math.sin(lipSync.phase1 * 1.8) * 0.5 + 0.5;
+                    lipSync.jawTarget   = intensity * jawScale * 0.25 * burstPhase;
+                    lipSync.t_pp        = intensity * (1.0 - burstPhase * 0.7);
+                    lipSync.t_aa        = intensity * burstPhase * 0.45; // burst open to aa
+                    lipSync.t_rest      = 0.1;
+                    break;
+
+                case 'nasal':
+                    // Near-closed for nasal resonance: N, NG, Hindi: न, ण
+                    lipSync.jawTarget   = intensity * jawScale * 0.15;
+                    lipSync.t_pp        = intensity * 0.4;
+                    lipSync.t_rest      = 0.5;
+                    break;
+
+                case 'fricative':
+                    // Upper teeth on lower lip / near-closed for air flow: F, V, S, SH
+                    // Hindi: फ, व, श, ष
+                    lipSync.jawTarget   = intensity * jawScale * 0.28;
+                    lipSync.t_ff        = intensity * 0.7;
+                    lipSync.t_rest      = 0.25;
+                    break;
+
+                case 'sibilant':
+                    // Tongue near teeth, slight open: T, K, D bursts
+                    // Hindi: त, क, ड, ट
+                    lipSync.jawTarget   = intensity * jawScale * 0.35;
+                    lipSync.t_th        = intensity * 0.65;
+                    lipSync.t_rest      = 0.2;
+                    break;
+
+                case 'pause':
+                    // Natural breath pause — mouth barely open, lips soft
+                    lipSync.jawTarget   = 0.015;
+                    lipSync.t_rest      = 0.9;
+                    break;
+
+                default: // rest
+                    lipSync.jawTarget   = 0;
+                    lipSync.t_rest      = 1.0;
+                    break;
+            }
+
+            // === STEP 4: Micro-motion layer ===
+            // Even in steady vowels, real lips have tiny movements.
+            // This prevents any "frozen" look during sustained sounds.
+            if (amplitude > 0.04) {
+                const micro = Math.sin(lipSync.microPhase) * 0.035 * intensity;
+                lipSync.jawTarget = Math.max(0, lipSync.jawTarget + micro);
+                // Occasional tiny smile flicker
+                if (Math.sin(lipSync.phase2 * 1.3) > 0.7) {
+                    lipSync.tSmileL += 0.06 * intensity;
+                    lipSync.tSmileR += 0.06 * intensity;
+                }
+            }
+
+            // === STEP 5: Apply all smoothing ===
+            applyVisemeSmoothing(dt, intensity);
+        }
+
+        /* ================================================================
+           VISEME SMOOTHING — spring physics for jaw, lerp for all shapes
+           Each shape uses different speeds to mimic different muscle groups:
+           - Jaw: spring physics (inertia + damping) = heavy bone movement
+           - Lips: fast lerp = lighter muscle, more responsive
+           - Smile corners: slow lerp = these move lazily
+        ================================================================ */
+        function applyVisemeSmoothing(dt, intensity) {
+            // JAW: Spring physics — feels weighty and natural
+            // F = spring_force - damping_force
+            const jawSpring  = 28.0;  // stiffness
+            const jawDamp    = 8.5;   // damping (critically damped feel)
+            const jawForce   = (lipSync.jawTarget - lipSync.jawOpen) * jawSpring
+                             - lipSync.jawVelocity * jawDamp;
+            lipSync.jawVelocity += jawForce * dt;
+            lipSync.jawOpen     += lipSync.jawVelocity * dt;
+            lipSync.jawOpen      = Math.max(0, Math.min(1, lipSync.jawOpen));
+
+            // VISEMES: asymmetric lerp speeds per shape
+            // Faster towards target (shape forms fast), slower away (shape dissolves lazily)
+            function smoothViseme(cur, target, speedOpen, speedClose) {
+                const speed = target > cur ? speedOpen : speedClose;
+                return cur + (target - cur) * Math.min(1, dt * speed);
+            }
+
+            lipSync.v_aa   = smoothViseme(lipSync.v_aa,   lipSync.t_aa,   22, 10);
+            lipSync.v_ee   = smoothViseme(lipSync.v_ee,   lipSync.t_ee,   20, 9);
+            lipSync.v_oh   = smoothViseme(lipSync.v_oh,   lipSync.t_oh,   18, 8);
+            lipSync.v_oo   = smoothViseme(lipSync.v_oo,   lipSync.t_oo,   20, 10);
+            lipSync.v_pp   = smoothViseme(lipSync.v_pp,   lipSync.t_pp,   30, 14); // bilabials form fast
+            lipSync.v_ff   = smoothViseme(lipSync.v_ff,   lipSync.t_ff,   18, 8);
+            lipSync.v_th   = smoothViseme(lipSync.v_th,   lipSync.t_th,   16, 7);
+            lipSync.v_rest = smoothViseme(lipSync.v_rest, lipSync.t_rest, 6,  14);
+            lipSync.smileL = smoothViseme(lipSync.smileL, lipSync.tSmileL, 8, 5);
+            lipSync.smileR = smoothViseme(lipSync.smileR, lipSync.tSmileR, 8, 5);
+
+            // Clamp all to [0, 1]
+            lipSync.v_aa   = Math.max(0, Math.min(1, lipSync.v_aa));
+            lipSync.v_ee   = Math.max(0, Math.min(1, lipSync.v_ee));
+            lipSync.v_oh   = Math.max(0, Math.min(1, lipSync.v_oh));
+            lipSync.v_oo   = Math.max(0, Math.min(1, lipSync.v_oo));
+            lipSync.v_pp   = Math.max(0, Math.min(1, lipSync.v_pp));
+            lipSync.v_ff   = Math.max(0, Math.min(1, lipSync.v_ff));
+            lipSync.v_th   = Math.max(0, Math.min(1, lipSync.v_th));
+            lipSync.v_rest = Math.max(0, Math.min(1, lipSync.v_rest));
+            lipSync.smileL = Math.max(0, Math.min(1, lipSync.smileL));
+            lipSync.smileR = Math.max(0, Math.min(1, lipSync.smileR));
         }
 
         /* ==========================================
@@ -1123,40 +1393,79 @@
                 applyBonePose(bodyBones.rightUpLeg, 0, 0, breathSin * 0.012);
 
                 // ============================
-                // APPLY JAW / LIPSYNC
+                // APPLY JAW BONE (spring-physics driven)
                 // ============================
-                const jawAmount = lipSync.smoothed * 0.28; // max ~16° = realistic jaw open
-
+                // Max jaw rotation = 0.14 radians (~8°) — real human speech
+                // Teachers especially speak with restrained jaw movement.
+                // Full 0.28 looked like a cartoon. 0.14 looks professional.
+                const jawRot = lipSync.jawOpen * 0.14;
                 if (jawBone) {
-                    // Bone-based jaw
-                    jawBone.rotation.x = jawAmount;
+                    jawBone.rotation.x = jawRot;
                 }
 
-                // Morph target lipsync (visemes + jawOpen)
-                // jawOpen: direct mapping to amplitude
-                applyMorphTarget('jawOpen', lipSync.smoothed);
-                applyMorphTarget('mouthOpen', lipSync.smoothed);
+                // ============================
+                // APPLY MORPH TARGET VISEMES
+                // All named variants covered for max model compatibility
+                // ============================
 
-                // Viseme shapes: layer vowel shapes on top
-                // viseme_aa (wide open: A sound) peaks when mouth wide
-                // viseme_O (rounded: O sound) peaks slightly later
-                const aa = Math.pow(lipSync.smoothed, 0.7);
-                const oh = Math.pow(lipSync.smoothed, 1.2) * Math.max(0, Math.sin(lipSync.phase2));
-                applyMorphTarget('viseme_aa', aa * 0.8);
-                applyMorphTarget('viseme_A', aa * 0.8);
-                applyMorphTarget('viseme_O', oh * 0.5);
-                applyMorphTarget('viseme_oh', oh * 0.5);
-                applyMorphTarget('viseme_E', lipSync.smoothed * 0.4);
+                // --- JAW OPEN (general) ---
+                applyMorphTarget('jawOpen',    lipSync.jawOpen);
+                applyMorphTarget('mouthOpen',  lipSync.jawOpen * 0.9);
+                applyMorphTarget('Mouth_Open', lipSync.jawOpen * 0.9);
+
+                // --- VOWEL AA: wide open (A, आ) ---
+                applyMorphTarget('viseme_aa',  lipSync.v_aa);
+                applyMorphTarget('viseme_A',   lipSync.v_aa);
+                applyMorphTarget('mouthOpen',  Math.max(lipSync.jawOpen * 0.9, lipSync.v_aa * 0.6));
+
+                // --- VOWEL EE: spread lips (E, इ) ---
+                applyMorphTarget('viseme_E',   lipSync.v_ee);
+                applyMorphTarget('viseme_I',   lipSync.v_ee * 0.7);
+                applyMorphTarget('viseme_ee',  lipSync.v_ee);
+
+                // --- VOWEL OH: rounded (O, ओ) ---
+                applyMorphTarget('viseme_O',   lipSync.v_oh);
+                applyMorphTarget('viseme_oh',  lipSync.v_oh);
+                applyMorphTarget('viseme_O',   lipSync.v_oh);
+
+                // --- VOWEL OO: tight round (U, उ) ---
+                applyMorphTarget('viseme_U',   lipSync.v_oo);
+                applyMorphTarget('viseme_oo',  lipSync.v_oo);
+                applyMorphTarget('viseme_u',   lipSync.v_oo);
+
+                // --- BILABIAL PP: lips together (B/M/P, ब/म/प) ---
+                applyMorphTarget('viseme_PP',  lipSync.v_pp);
+                applyMorphTarget('viseme_pp',  lipSync.v_pp);
+                applyMorphTarget('viseme_P',   lipSync.v_pp);
+                applyMorphTarget('mouthClose', lipSync.v_pp * 0.8);
+
+                // --- FRICATIVE FF: (F/V, फ/व) ---
+                applyMorphTarget('viseme_FF',  lipSync.v_ff);
+                applyMorphTarget('viseme_ff',  lipSync.v_ff);
+                applyMorphTarget('viseme_F',   lipSync.v_ff);
+
+                // --- DENTAL TH: (TH/T/S, त/स) ---
+                applyMorphTarget('viseme_TH',  lipSync.v_th);
+                applyMorphTarget('viseme_th',  lipSync.v_th);
+                applyMorphTarget('viseme_SS',  lipSync.v_th * 0.6);
+
+                // --- MOUTH CORNERS (smile during speech = natural expressiveness) ---
+                applyMorphTarget('mouthSmileLeft',  lipSync.smileL);
+                applyMorphTarget('mouthSmileRight', lipSync.smileR);
+                applyMorphTarget('MouthSmile_L',    lipSync.smileL);
+                applyMorphTarget('MouthSmile_R',    lipSync.smileR);
+                applyMorphTarget('smile_left',      lipSync.smileL);
+                applyMorphTarget('smile_right',     lipSync.smileR);
 
                 // ============================
                 // APPLY BLINKING
                 // ============================
-                applyMorphTarget('eyeBlinkLeft', blink.value);
+                applyMorphTarget('eyeBlinkLeft',  blink.value);
                 applyMorphTarget('eyeBlinkRight', blink.value);
-                applyMorphTarget('EyeBlinkLeft', blink.value);
+                applyMorphTarget('EyeBlinkLeft',  blink.value);
                 applyMorphTarget('EyeBlinkRight', blink.value);
-                applyMorphTarget('blink_left', blink.value);
-                applyMorphTarget('blink_right', blink.value);
+                applyMorphTarget('blink_left',    blink.value);
+                applyMorphTarget('blink_right',   blink.value);
             }
 
             controls.update();
